@@ -113,6 +113,16 @@ const DISH_NAME = {
   lau_mam: "Lẩu mắm miền Tây"
 };
 const kc = (k) => KIND_COLOR[k] || "#bbbbbb";
+const spoiledBelow = () => (snap && snap.meta_all && snap.meta_all.freshness && snap.meta_all.freshness.spoiled_below) ?? 30;
+function countKinds(items, onlyFresh = false) {
+  const th = spoiledBelow();
+  const out = {};
+  (items || []).forEach((it) => {
+    const k = typeof it === "string" ? it : it.kind;
+    if (!onlyFresh || typeof it === "string" || it.fresh >= th) out[k] = (out[k] || 0) + 1;
+  });
+  return out;
+}
 
 // ---------- Input ----------
 const down = new Set();
@@ -276,11 +286,13 @@ function trackEvents() {
     } else if (snap.mode === "day" && snap.phase === "quan") {
       introMode = "quan";
       document.getElementById("intro-title").textContent = `Buổi tối Ngày ${snap.day || 1} — Mở Quán`;
-      const st = Object.entries(snap.stock || {}).map(([k, n]) => `${KIND_NAME[k] || k} ×${n}`).join(", ") || "(Kho trống)";
+      const stCnt = countKinds(snap.stock, false);
+      const freshCnt = countKinds(snap.stock, true);
+      const st = Object.entries(stCnt).map(([k, n]) => `${KIND_NAME[k] || k} ×${n}`).join(", ") || "(Kho trống)";
       const menu = (snap.meta_all && snap.meta_all.menu) || {};
       const planDishes = Object.keys((snap.day_plan && snap.day_plan.dishes) || {});
-      const cookable = planDishes.filter((d) => menu[d] && Object.entries(menu[d].recipe).every(([k, q]) => (snap.stock[k] || 0) >= q));
-      const cStr = cookable.map((d) => DISH_NAME[d] || d).join(", ") || "(Không đủ nguyên liệu món nào)";
+      const cookable = planDishes.filter((d) => menu[d] && Object.entries(menu[d].recipe).every(([k, q]) => (freshCnt[k] || 0) >= q));
+      const cStr = cookable.map((d) => DISH_NAME[d] || d).join(", ") || "(Không đủ nguyên liệu tươi món nào)";
       document.getElementById("intro-body").innerHTML = `<strong>Kho nhập từ buổi sáng:</strong> ${st}<br><br><strong>Món nấu được hôm nay:</strong> ${cStr}`;
       introDeadline = Date.now() + 3000;
       document.getElementById("intro-modal").classList.add("open");
@@ -486,21 +498,45 @@ function drawGather(w, h) {
 
   // Kế hoạch ngày (nếu mode day)
   if (snap.day_plan && snap.day_plan.ingredients) {
-    const cnt = {}; (snap.hold || []).forEach((k) => (cnt[k] = (cnt[k] || 0) + 1));
+    const cnt = countKinds(snap.hold, true);
     const reqTxt = Object.entries(snap.day_plan.ingredients).map(([k, q]) => `${KIND_NAME[k] || k} ${cnt[k] || 0}/${q}`).join(" · ");
-    text("Cần lấy: " + reqTxt, w - 16, 32, { size: 18, align: "right", color: "#ffe082" });
+    text("Cần lấy (tươi): " + reqTxt, w - 16, 32, { size: 18, align: "right", color: "#ffe082" });
   }
 
-  // Giỏ dưới
+  // Giỏ dưới (hiển thị độ tươi từng cá thể và cảnh báo ƯƠN < 30)
   if (snap.hold && snap.hold_capacity) {
-    const cap = snap.hold_capacity, sz = 30, y0 = h - bottom + 10;
+    const cap = snap.hold_capacity, sz = 32, y0 = h - bottom + 6;
+    const th = spoiledBelow();
+    let spoiledCnt = 0;
     for (let i = 0; i < cap; i++) {
       const x0 = 16 + i * (sz + 5);
       ctx.fillStyle = "rgba(255,255,255,.14)"; ctx.fillRect(x0, y0, sz, sz);
-      if (snap.hold[i]) { ctx.fillStyle = kc(snap.hold[i]); ctx.fillRect(x0 + 4, y0 + 4, sz - 8, sz - 8); }
+      const it = snap.hold[i];
+      if (it) {
+        const k = typeof it === "string" ? it : it.kind;
+        const fr = typeof it === "string" ? 100 : (it.fresh ?? 100);
+        const isSpoiled = fr < th;
+        if (isSpoiled) spoiledCnt += 1;
+        ctx.fillStyle = kc(k); ctx.fillRect(x0 + 3, y0 + 3, sz - 6, sz - 10);
+        const fCol = isSpoiled ? "#ff1744" : (fr < 60 ? "#ffb300" : "#69f0ae");
+        ctx.fillStyle = "#111"; ctx.fillRect(x0 + 3, y0 + sz - 7, sz - 6, 4);
+        ctx.fillStyle = fCol; ctx.fillRect(x0 + 3, y0 + sz - 7, (sz - 6) * Math.max(0, Math.min(1, fr / 100)), 4);
+        if (isSpoiled) {
+          ctx.strokeStyle = "#ff1744"; ctx.lineWidth = 2; ctx.strokeRect(x0 + 1, y0 + 1, sz - 2, sz - 2);
+          text("ƯƠN", x0 + sz / 2, y0 + 16, { size: 10, weight: "900", align: "center", color: "#ffebee" });
+        } else {
+          text(String(Math.floor(fr)), x0 + sz / 2, y0 + 16, { size: 10, weight: "700", align: "center", color: "#111" });
+        }
+      }
     }
-    const names = {}; snap.hold.forEach((k) => (names[k] = (names[k] || 0) + 1));
-    text("Giỏ " + snap.hold.length + "/" + cap + ": " + (Object.keys(names).map((k) => (KIND_NAME[k] || k) + "×" + names[k]).join(", ") || "trống"), 16, y0 + sz + 22, { size: 18, color: "#e8eef2" });
+    const freshByK = countKinds(snap.hold, true);
+    const allByK = countKinds(snap.hold, false);
+    const parts = Object.keys(allByK).map((k) => {
+      const f = freshByK[k] || 0, tot = allByK[k];
+      return f < tot ? `${KIND_NAME[k] || k}×${tot}(${tot - f} ươn)` : `${KIND_NAME[k] || k}×${tot}`;
+    });
+    const spLabel = spoiledCnt ? ` · ⚠ ${spoiledCnt} ươn (<${th})` : "";
+    text("Giỏ " + snap.hold.length + "/" + cap + ": " + (parts.join(", ") || "trống") + spLabel, 16, y0 + sz + 22, { size: 18, color: spoiledCnt ? "#ff8a80" : "#e8eef2" });
   }
 }
 
@@ -534,8 +570,8 @@ function drawQuan(w, h) {
     if (c) {
       const cx = sx(tb.pos[0]), cy = sy(tb.pos[1]) - 1.55 * s;
       ctx.fillStyle = c.state === "eating" ? "#7bc67b" : "#f4b6c2"; ctx.beginPath(); ctx.arc(cx, cy, 0.55 * s, 0, Math.PI * 2); ctx.fill();
-      const stTxt = c.state === "eating" ? "đang ăn" : (c.order_status === "assigned" ? "đang nấu" : "chờ");
-      text((DISH_NAME[c.dish_id] || c.dish_id) + " · " + stTxt, cx, cy - 0.75 * s, { size: 12, weight: "700", align: "center", color: "#2a1a0a" });
+      const stTxt = c.state === "eating" ? "đang ăn" : (c.order_status === "assigned" ? "đang nấu" : (c.order_status === "unfulfillable" ? "hết NL (ươn)" : "chờ"));
+      text((DISH_NAME[c.dish_id] || c.dish_id) + " · " + stTxt, cx, cy - 0.75 * s, { size: 12, weight: "700", align: "center", color: c.order_status === "unfulfillable" ? "#ff1744" : "#2a1a0a" });
       if (c.state === "waiting" && c.patience_ticks_left !== undefined) {
         const frac = c.patience_ticks_left / patMax;
         bar(cx - 0.9 * s, cy + 0.65 * s, 1.8 * s, 7, frac, frac < 0.25 ? "#ff1744" : "#66bb6a");
@@ -554,10 +590,24 @@ function drawQuan(w, h) {
   const lowTime = (snap.time_left_ticks || 0) <= 30 * 60;
   text((snap.day ? `Ngày ${snap.day} · ` : "") + "⏱ " + fmtTime(snap.time_left_ticks), 16, 32, { size: 22, weight: "700", color: lowTime ? "#ff8a65" : "#f6efe2" });
   text(`Tiền: ${snap.money ?? 0}k · Doanh thu: ${snap.earned ?? 0}k · Uy tín: ${(snap.reputation ?? 0).toFixed(1)} · Điểm: ${snap.score ?? 0}`, 220, 32, { size: 20, weight: "700" });
-  const avail = Object.assign({}, snap.stock || {});
-  (snap.customers || []).forEach((c) => Object.entries(c.reserved || {}).forEach(([k, q]) => { avail[k] = Math.max(0, (avail[k] || 0) - q); }));
-  const stockStr = Object.keys(avail).filter((k) => avail[k] > 0).map((k) => `${KIND_NAME[k] || k}×${avail[k]}`).join(", ");
-  text("Kho khả dụng: " + (stockStr || "(trống)"), 16, 62, { size: 18, color: "#cfd8dc" });
+  const resSet = new Set();
+  (snap.customers || []).forEach((c) => {
+    const res = c.reserved;
+    if (Array.isArray(res)) res.forEach((id) => resSet.add(id));
+  });
+  const th = spoiledBelow();
+  const availFresh = {}, availMin = {};
+  let spoiledStock = 0;
+  (snap.stock || []).forEach((it) => {
+    if (it.fresh < th) { spoiledStock += 1; return; }
+    if (!resSet.has(it.id)) {
+      availFresh[it.kind] = (availFresh[it.kind] || 0) + 1;
+      availMin[it.kind] = availMin[it.kind] === undefined ? it.fresh : Math.min(availMin[it.kind], it.fresh);
+    }
+  });
+  const stockParts = Object.keys(availFresh).sort().map((k) => `${KIND_NAME[k] || k}×${availFresh[k]}(${Math.floor(availMin[k])}%)`);
+  const spTxt = spoiledStock ? ` · [⚠ ${spoiledStock} ươn]` : "";
+  text("Kho khả dụng: " + (stockParts.join(", ") || "(trống)") + spTxt, 16, 62, { size: 18, color: spoiledStock ? "#ff8a80" : "#cfd8dc" });
   text("WASD đi · E tương tác (bếp / bàn) · Esc/P tạm dừng · R chơi lại", w - 16, h - 14, { size: 18, align: "right", color: "#9fb3c0" });
 }
 

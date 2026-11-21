@@ -14,9 +14,9 @@ from helpers import Workdir, events, frames, read_jsonl, run_headless, snapshots
 
 class Phase2CoreRules(unittest.TestCase):
     def test_ac_p2_01_contract_v11_structure(self):
-        """AC-P2-01: game.contract.json đạt chuẩn v1.1 (6 nút, 8 cá, 3 loài, quái M1/M2, 2 bếp, 4 bàn, 6 món, D1-D5, Shop)."""
+        """AC-P2-01: game.contract.json đạt chuẩn >= v1.1 (6 nút, 8 cá, 3 loài, quái M1/M2, 2 bếp, 4 bàn, 6 món, D1-D5, Shop)."""
         c = load_contract()
-        self.assertEqual(c["contract_version"], "1.1")
+        self.assertIn(c["contract_version"], ("1.1", "1.2", "1.3"))
         g = c["tuning"]["gather"]
         self.assertEqual(len(g["nodes"]), 6)
         self.assertEqual({n["kind"] for n in g["nodes"]}, {"bong_dien_dien", "bong_sung", "keo_neo"})
@@ -67,7 +67,10 @@ class Phase2CoreRules(unittest.TestCase):
             # M1 đứng sát người chơi dưới d=24, hold 5 món -> chạm mất 1 HP, rơi floor(5/2)=2 món LIFO, recoil 60 tick
             sc = write_json(w.path("sc.json"), {"gather": {
                 "player": {"pos": [60.5, 24.0], "hp": 2},
-                "hold": ["ca_loc", "bong_sung", "ca_linh", "ca_keo", "keo_neo"],
+                "hold": [
+                    {"id": f"I{i + 1}", "kind": k, "fresh": 100}
+                    for i, k in enumerate(("ca_loc", "bong_sung", "ca_linh", "ca_keo", "keo_neo"))
+                ],
                 "random_fish": False,
                 "monsters": [{"id": "M1", "kind": "ca_sau", "pos": [60.0, 24.0],
                               "waypoints": [[60.0, 24.0], [64.0, 24.0]]}],
@@ -82,7 +85,8 @@ class Phase2CoreRules(unittest.TestCase):
             self.assertGreaterEqual(len(hits), 1)
             self.assertEqual(hits[0]["tick"], 1)
             self.assertEqual(hits[0]["data"]["hp"], 1)
-            self.assertEqual(hits[0]["data"]["lost"], ["keo_neo", "ca_keo"])
+            self.assertEqual([it["kind"] for it in hits[0]["data"]["lost"]], ["keo_neo", "ca_keo"])
+            self.assertEqual([it["id"] for it in hits[0]["data"]["lost"]], ["I5", "I4"])
             snaps = {s["tick"]: s for s in snapshots(rows)}
             self.assertEqual(snaps[1]["player"]["invuln_ticks"], 90)
             self.assertEqual(snaps[1]["monsters"][0]["state"], "recoil")
@@ -96,7 +100,7 @@ class Phase2CoreRules(unittest.TestCase):
                 self.assertEqual(faint["data"]["cause"], "monster")
                 self.assertEqual(faint["data"]["hp"], 0)
                 with open(inv, encoding="utf-8") as f:
-                    self.assertEqual(json.load(f), {"items": {}})
+                    self.assertEqual(json.load(f), {"items": []})
 
         # Kiểm exit chase khi người chơi lên d < 10
         with Workdir() as w:
@@ -118,7 +122,10 @@ class Phase2CoreRules(unittest.TestCase):
         with Workdir() as w:
             sc = write_json(w.path("sc.json"), {"gather": {
                 "player": {"pos": [20, 5], "oxygen_ticks": 1, "hp": 2, "invuln_ticks": 90},
-                "hold": ["ca_loc", "ca_keo"],
+                "hold": [
+                    {"id": "I1", "kind": "ca_loc", "fresh": 100},
+                    {"id": "I2", "kind": "ca_keo", "fresh": 100},
+                ],
                 "random_fish": False,
                 "monsters": [],
             }})
@@ -129,14 +136,15 @@ class Phase2CoreRules(unittest.TestCase):
             ch = events(rows, "choke")
             self.assertEqual([e["tick"] for e in ch], [60])
             self.assertEqual(ch[0]["data"]["hp"], 1)
-            self.assertEqual(snapshots(rows)[-1]["hold"], ["ca_loc", "ca_keo"])
+            self.assertEqual([it["kind"] for it in snapshots(rows)[-1]["hold"]], ["ca_loc", "ca_keo"])
 
     def test_ac_p2_05_two_stoves_four_tables_and_new_dishes(self):
         """AC-P2-05: 2 bếp B1/B2 nấu song song, 4 bàn T1..T4 và món mới lau_mam."""
         with Workdir() as w:
+            kinds = ["ca_linh", "ca_linh", "ca_keo", "ca_keo", "ca_keo", "keo_neo", "bong_dien_dien", "ca_loc", "bong_sung", "bong_sung"]
             sc = write_json(w.path("sc.json"), {"quan": {
                 "player": {"pos": [2, 8]},
-                "stock": {"ca_linh": 2, "ca_keo": 3, "keo_neo": 1, "bong_dien_dien": 1, "ca_loc": 1, "bong_sung": 2},
+                "stock": [{"id": f"I{i + 1}", "kind": k, "fresh": 100} for i, k in enumerate(kinds)],
                 "customers": [
                     {"id": "C1", "table_id": "T1", "dish_id": "lau_mam", "order_tick": 1},
                     {"id": "C2", "table_id": "T2", "dish_id": "ca_keo_nuong", "order_tick": 2},
@@ -146,7 +154,7 @@ class Phase2CoreRules(unittest.TestCase):
                 "random_customers": False,
             }})
             inp = write_json(w.path("in.json"), frames(
-                {"tick": 0, "interact": True},                  # nấu lau_mam trên B1
+                {"tick": 0, "interact": True},                  # nấu lau_mam trên B1 (hao 1 tick còn 99.9958... -> chốt 199)
                 {"tick": 1, "interact": False, "move": [1, 0]}, # đi sang B2 [5, 8]
                 {"tick": 50, "move": [0, 0], "interact": True}, # nấu ca_keo_nuong trên B2
             ))
@@ -156,7 +164,7 @@ class Phase2CoreRules(unittest.TestCase):
             cs = events(read_jsonl(w.path("o.jsonl")), "cook_started")
             self.assertEqual([(e["data"]["stove_id"], e["data"]["dish_id"]) for e in cs],
                              [("B1", "lau_mam"), ("B2", "ca_keo_nuong")])
-            self.assertEqual(cs[0]["data"]["base_price"], 200)
+            self.assertEqual(cs[0]["data"]["base_price"], 199)
 
     def test_ac_p2_06_pause_freezes_sim_and_preserves_button_edge(self):
         """AC-P2-06: pause đóng băng sim_tick/phase_tick/timer, bỏ qua hành động & buy; resumed chạy ngay trong tick đó."""
@@ -189,7 +197,7 @@ class Phase2CoreRules(unittest.TestCase):
         with Workdir() as w:
             sc = write_json(w.path("sc.json"), {"gather": {
                 "player": {"pos": [20, 5], "oxygen_ticks": 1, "hp": 1},
-                "hold": ["ca_loc"],
+                "hold": [{"id": "I1", "kind": "ca_loc", "fresh": 100}],
                 "random_fish": False,
                 "monsters": [],
             }})
@@ -209,14 +217,21 @@ class Phase2CoreRules(unittest.TestCase):
             self.assertEqual(rows[-1]["days_completed"], 1)
             # Khi chuyển sang quan ở tick 60, stock phải rỗng dù hold ban đầu có ca_loc
             quan_snap = [s for s in snapshots(rows) if s["phase"] == "quan"][0]
-            self.assertEqual(quan_snap["stock"], {})
+            self.assertEqual(quan_snap["stock"], [])
             self.assertEqual(quan_snap["phase_tick"], 0)
 
         # 2) Nhiều ngày (3 ngày): Shop mua oxygen & hp lv1 (kể cả buy + shop_done trên bước cuối shop), hiệu lực từ Ngày 2, M2 xuất hiện ở Ngày 3
         with Workdir() as w:
             sc = write_json(w.path("sc.json"), {
                 "day": {"money": 500, "earned": 500},
-                "gather": {"time_left_ticks": 2, "hold": ["ca_keo", "ca_keo"], "random_fish": False},
+                "gather": {
+                    "time_left_ticks": 2,
+                    "hold": [
+                        {"id": "I1", "kind": "ca_keo", "fresh": 100},
+                        {"id": "I2", "kind": "ca_keo", "fresh": 100},
+                    ],
+                    "random_fish": False,
+                },
                 "quan": {"time_left_ticks": 2},
             })
             # Day 1: gather 2 ticks (1..2), quan 2 ticks (3..4 -> shop at 4),
@@ -274,7 +289,7 @@ class Phase2CoreRules(unittest.TestCase):
         bad_scenarios = [
             {"day": {"money": 100}},  # thiếu earned
             {"day": {"money": 200, "earned": 100}},  # money > earned
-            {"quan": {"stock": {"ca_loc": 1}}},  # cấm quan.stock trong day
+            {"quan": {"stock": [{"id": "I1", "kind": "ca_loc", "fresh": 100}]}},  # cấm quan.stock trong day
             {"quan": {"reputation": 4.0}},       # cấm quan.reputation trong day
             {"day": {"day_plan": [{"day": 1, "dishes": {"ca_loc_nuong_trui": 2}, "ingredients": {"ca_loc": 1}}]}},
             {"gather": {"monsters": [{"id": "M1", "kind": "ca_sau", "pos": [60, 24], "waypoints": [[60, 24], [64, 24]],
@@ -308,9 +323,10 @@ class Phase2CoreRules(unittest.TestCase):
     def test_ac_p2_13_two_process_handoff_v11_ingredients(self):
         """AC-P2-13: bàn giao 2 tiến trình với nguyên liệu mới (ca_keo, keo_neo) nấu Lẩu mắm."""
         with Workdir() as w:
+            kinds = ["ca_linh", "ca_linh", "ca_keo", "keo_neo", "bong_dien_dien"]
             sc_g = write_json(w.path("sc_g.json"), {"gather": {
                 "player": {"pos": [2, 0]},
-                "hold": ["ca_linh", "ca_linh", "ca_keo", "keo_neo", "bong_dien_dien"],
+                "hold": [{"id": f"I{i + 1}", "kind": k, "fresh": 100} for i, k in enumerate(kinds)],
                 "random_fish": False,
                 "monsters": [],
             }})
@@ -320,7 +336,9 @@ class Phase2CoreRules(unittest.TestCase):
                                      "--scenario", sc_g, "--inputs", inp_g, "--inventory-out", inv, "--out", w.path("g.jsonl"))
             self.assertEqual(code, 0, err)
             with open(inv, encoding="utf-8") as f:
-                self.assertEqual(json.load(f), {"items": {"bong_dien_dien": 1, "ca_keo": 1, "ca_linh": 2, "keo_neo": 1}})
+                saved = json.load(f)
+            self.assertEqual([(it["id"], it["kind"]) for it in saved["items"]],
+                             [(f"I{i + 1}", k) for i, k in enumerate(kinds)])
             sc_q = write_json(w.path("sc_q.json"), {"quan": {
                 "player": {"pos": [2, 8]},
                 "customers": [{"id": "C1", "table_id": "T1", "dish_id": "lau_mam"}],
@@ -340,9 +358,9 @@ class Phase2CoreRules(unittest.TestCase):
             rows = read_jsonl(w.path("q.jsonl"))
             paid = events(rows, "paid")
             self.assertEqual(len(paid), 1)
-            self.assertEqual(paid[0]["data"]["base_price"], 200)
-            self.assertEqual(paid[0]["data"]["tip"], 40)
-            self.assertEqual(rows[-1]["earned"], 240)
+            self.assertEqual(paid[0]["data"]["base_price"], 199)
+            self.assertEqual(paid[0]["data"]["tip"], 39)
+            self.assertEqual(rows[-1]["earned"], 238)
 
     def test_ac_p2_14_live_server_day_mode(self):
         """AC-P2-14: chonoi.live hỗ trợ chế độ day, pause, buy, shop_done qua HTTP API."""
