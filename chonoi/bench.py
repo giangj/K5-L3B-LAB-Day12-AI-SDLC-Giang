@@ -165,6 +165,7 @@ class GatherRenderer:
     def __init__(self, tuning: dict):
         self.t = tuning["gather"]
         self.bg = _build_background()
+        self.buf = bytearray(len(self.bg))
         self.top_bar_h = 84
         self.water_top = 174
         self.water_bot = HEIGHT - 76
@@ -178,7 +179,8 @@ class GatherRenderer:
         return (int(self.pad_x + pos[0] * self.sx), int(self.water_top + pos[1] * self.sd))
 
     def render(self, snap: dict, tick_idx: int) -> bytearray:
-        buf = self.bg.copy()
+        self.buf[:] = self.bg
+        buf = self.buf
 
         # Hiệu ứng gợn sóng nhẹ mặc định trên mặt nước
         shimmer = int((tick_idx * 3) % 80)

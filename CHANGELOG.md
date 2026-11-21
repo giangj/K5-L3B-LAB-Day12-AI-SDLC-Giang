@@ -1,5 +1,16 @@
 # Changelog
 
+## Phase 4 (2026-11-21) — Test Contract v1.3 & Release v1.0.0
+### Tính năng & Nâng cấp
+- **Nâng cấp Contract v1.3:** Khai báo `contract_version: "1.3"`, `bench_cmd: "python3 -m chonoi.bench"` và `soak_cmd: "python3 -m chonoi.soak"` tại cấp gốc `game.contract.json`.
+- **Bộ đo hiệu năng đồ họa (Benchmark):** Tạo `chonoi/bench.py` chạy cảnh lặn buổi sáng chuẩn 1280×720 (Út Sen, Cá Sấu M1, 8 cá, nút hái, độ tươi) trong 30s sau 3s warmup. Đo `avg_fps`, `p1_low_fps`, `load_ms`, `frames`, `measured_s` và xuất ảnh preview PNG. Đạt **313.08 FPS** (vượt xa ngưỡng 60 FPS), **76.77 FPS** 1% low (vượt ngưỡng 30 FPS), và **13.13 ms** load time (dưới xa ngưỡng 10s).
+- **Kiểm thử bền vững (Soak Runner):** Tạo `chonoi/soak.py` chạy bot tự động 10 ngày trong 1 tiến trình duy nhất (lặp lại D1–D5 cho D6–D10), bảo toàn tiền tích lũy, uy tín, nâng cấp và ID cá thể. Đạt **10/10 ngày hoàn thành** với **0 crash** trong 22.9s.
+- **Trợ năng & Chế độ Tương phản cao (High Contrast):**
+  - Tích hợp 3 cảnh báo chữ + biểu tượng rõ nét: `⚠ THỦY QUÁI GẦN!`, `⚠ OXY SẮP HẾT!` và `⚠ KHÁCH SẮP GIẬN!`.
+  - Hỗ trợ chế độ tương phản cao với phím tắt `H`, query param `?hc=1` hoặc nút bấm UI.
+- **Kiểm thử tự động:** Bổ sung `tests/test_phase4_rules.py` (4 bài kiểm thử chấp nhận AC-P4-01..04). Toàn bộ 62 bài kiểm thử hồi quy P1–P4 đạt 100% xanh (`docs/proof/phase-4/test_results.txt`).
+- **Phát hành Release v1.0.0:** Đóng gói mã nguồn `chonoi-v1.0.0-Giang.zip`, gắn tag `phase-4` và `v1.0.0`, xuất bản GitHub Release `v1.0.0`.
+
 ## Phase 3 (2026-11-21) — Test Contract v1.2 (Mùa Nước Nổi)
 ### Breaking Changes
 - **[THAY THẾ] Schema kho nguyên liệu:** Kho đếm theo loại `{"items": {"ca_linh": 2}}` bị loại bỏ và **trả mã thoát `2`**; thay bằng kho cá thể `{"items": [{"id": "I1", "kind": "ca_linh", "fresh": 100}]}` trong cả `--inventory-out` / `--inventory`, `gather_end.data.inventory`, snapshot `hold`/`stock`, và `customers[].reserved` (mảng ID cá thể).
@@ -25,5 +36,3 @@
 - Triển khai đầy đủ luật buổi tối (`chonoi/sim/quan.py`) & kiểm mâu thuẫn (`chonoi/scenario.py`): lịch khách, giữ chỗ nguyên liệu, `no_dish`, interact ưu tiên `(dist, bếp trước bàn, id)`, nấu/nhấc/phục vụ, tính boa & uy tín chính xác bằng `Decimal`, đóng ca `closing`, trả mã thoát `2` trước khi ghi file khi scenario sai.
 - Sửa HUD `chonoi/web/index.html` hiển thị đúng `dish_id` từ payload món trên bếp và `Kho khả dụng`.
 - Bổ sung bộ test hộp đen `tests/test_phase1_rules.py` (tổng 42/42 test pass) và bằng chứng thật tại `docs/proof/phase-1/`.
-
-## Unreleased

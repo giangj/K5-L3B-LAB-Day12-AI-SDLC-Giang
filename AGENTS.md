@@ -28,6 +28,12 @@
   - Tính độ tươi bằng `fractions.Fraction` theo đơn vị `1/240` điểm tươi (`0.5/s = 2/240`, `0.25/s = 1/240`); hàng mới `fresh=100` chỉ hao từ bước sau; `paused`, món chín và Shop không hao; phát `spoiled` đúng 1 lần theo `id_key` khi đi từ `>= 30` xuống `< 30`.
   - Ở `quan`, sau khi hao tươi và phát hết `spoiled`, nhả toàn bộ giữ chỗ của các đơn bị ươn và thử giữ lại đúng 1 lần theo `(order_tick, id_key(table_id))` (chọn tươi nhất, hòa theo `id_key`, thiếu chuyển `unfulfillable`); `cook_started` tiêu đúng ID đã giữ, chốt `base_price = floor(list_price * avg_fresh / 100)`, `items` sắp `(kind, id_key)`; boa `floor(base_price * 0.2)`.
   - Trong `DaySim`, đồng bộ `money`/`earned`/`reputation`/`upgrades`/`stock` ra lớp bọc ngay mỗi tick (kể cả khi pha con chưa `done`).
+- **Bất biến Phase 4 (Contract v1.3 & Release v1.0.0):**
+  - Khai báo bắt buộc `bench_cmd` và `soak_cmd` ở cấp gốc `game.contract.json`.
+  - `bench`: dựng hình cảnh chuẩn 1280×720 RGB24 (warmup 3s, đo 30s) đạt `avg_fps >= 60`, `p1_low_fps >= 30`, `load_ms <= 10000`; tối ưu tái sử dụng bộ đệm `self.buf[:] = self.bg` không cấp phát heap.
+  - `soak`: chạy 10 ngày đêm trong 1 tiến trình duy nhất; lặp chu kỳ D1–D5 cho D6–D10; bảo toàn tiền, uy tín, nâng cấp và chuỗi ID cá thể liên tục; đạt `crashes == 0`.
+  - 3 Cảnh báo trợ năng chữ + biểu tượng `⚠` (`THỦY QUÁI GẦN!`, `OXY SẮP HẾT!`, `KHÁCH SẮP GIẬN!`) cùng chế độ Tương phản cao kích hoạt qua phím `H` / `?hc=1`.
+  - Đóng gói bản phát hành `chonoi-v1.0.0-Giang.zip`, gắn tag đồng bộ `phase-4` và `v1.0.0`.
 
 ## Nên tránh
 - Không sửa `tools/check_team.py` hoặc `tests/test_team_check.py`.
