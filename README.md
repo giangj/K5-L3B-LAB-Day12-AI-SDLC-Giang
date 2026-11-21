@@ -53,5 +53,5 @@ python3 -m chonoi.live --mode quan --inventory catch.json
 
 - Thành viên & thỏa thuận nhóm: [`TEAM.md`](TEAM.md) (`team_size: 1`)
 - Hướng dẫn agent & AI skills: [`AGENTS.md`](AGENTS.md), [`.agents/skills/`](.agents/skills/)
-- Kế hoạch, ma trận truy vết & bằng chứng: Phase 1 ([`plan`](docs/plan/phase-1.md), [`verification`](docs/verification/phase-1.md), [`proof`](docs/proof/phase-1/)), Phase 2 ([`plan`](docs/plan/phase-2.md), [`verification`](docs/verification/phase-2.md), [`proof`](docs/proof/phase-2/))
+- Kế hoạch, ADR, ma trận truy vết & bằng chứng: Phase 1 ([`plan`](docs/plan/phase-1.md), [`verification`](docs/verification/phase-1.md), [`proof`](docs/proof/phase-1/)), Phase 2 ([`plan`](docs/plan/phase-2.md), [`verification`](docs/verification/phase-2.md), [`proof`](docs/proof/phase-2/)), Phase 3 ([`ADR-0001`](docs/adr/0001-freshness-inventory-v12.md), [`plan`](docs/plan/phase-3.md), [`verification`](docs/verification/phase-3.md), [`proof`](docs/proof/phase-3/))
 - Làm rõ yêu cầu, standup, retro & nhật ký AI: [`docs/clarify.md`](docs/clarify.md), [`docs/standup.md`](docs/standup.md), [`docs/retro.md`](docs/retro.md), [`docs/ai-usage-log.md`](docs/ai-usage-log.md), [`CHANGELOG.md`](CHANGELOG.md)
