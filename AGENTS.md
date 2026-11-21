@@ -4,32 +4,32 @@
 
 ## Lệnh
 - Test: `PYTHONPATH=tests:. python3 -m unittest discover -s tests -v`
-- Headless: `python3 -m chonoi.headless --mode gather|quan --seed 1 --ticks 600 --out out.jsonl`
-- Chơi thử trên trình duyệt: `python3 -m chonoi.live --mode gather|quan` (mở địa chỉ in ra; WASD, E, Space, R)
-- Lưu ý Windows local: đảm bảo `python3` trỏ tới Python 3.11+ (nếu `python3` là Microsoft Store alias thì tạo shim `python3.exe` trong thư mục scratch nằm trước trên `PATH`, không sửa `python3` trong `game.contract.json` để giữ tương thích Linux/CI).
+- Headless:
+  - Buổi rời: `python3 -m chonoi.headless --mode gather|quan --seed 1 --ticks 600 --out out.jsonl`
+  - Vòng ngày v1.1: `python3 -m chonoi.headless --mode day --days 1 --seed 1 --ticks 22200 --out day.jsonl`
+- Chơi thử trên trình duyệt: `python3 -m chonoi.live --mode day` (hoặc `--mode gather|quan`; WASD, E, Space, Esc/P tạm dừng, R chơi lại)
+- Lưu ý Windows local: đảm bảo `python3` trỏ tới Python 3.11+ (tạo shim `python3.exe` trong scratch nằm trước trên `PATH`, không sửa `python3` trong `game.contract.json`).
 
 ## Cấu trúc & quy ước
-- (Starter Python là TÙY CHỌN; nhóm có thể dùng ngôn ngữ khác nếu giữ Test Contract.) Khung do giảng viên cấp: `chonoi/{headless,inputs,scenario,contract,rng,ids,jsonl,inventory,runner,live}.py` và `chonoi/web/`. Hạn chế sửa; nếu phải sửa thì báo cả nhóm và ghi lại lý do.
-- Luật chơi của nhóm: `chonoi/sim/gather.py`, `chonoi/sim/quan.py` (tìm `TODO(nhóm)`), và kiểm mâu thuẫn mức luật trong `chonoi/scenario.py`.
+- Khung chung: `chonoi/{headless,inputs,scenario,contract,rng,ids,jsonl,inventory,runner,live}.py` và `chonoi/web/`.
+- Luật chơi: `chonoi/sim/gather.py`, `chonoi/sim/quan.py`, `chonoi/sim/shop.py`, `chonoi/sim/day.py`, và kiểm mâu thuẫn mức luật trong `chonoi/scenario.py`.
 - **Số liệu chỉ đọc từ `game.contract.json` / dữ liệu**, không hard-code trong luật.
-- Mọi số ngẫu nhiên đi qua `Streams` (`chonoi/rng.py`); không dùng `random` toàn cục, không dùng đồng hồ hệ thống.
+- Mọi số ngẫu nhiên đi qua `Streams` (`chonoi/rng.py`); dùng các stream tách biệt (`fish_spawn`, `fish_turn`, `customer_dish`) để tránh lệch chuỗi RNG; không dùng `random` toàn cục hay đồng hồ hệ thống.
 - Sắp danh sách thực thể bằng `ids.sort_by_id`; cấp id bằng `IdAllocator`.
-- **Bất biến Phase 1 (Contract v1.0)**:
-  - `gather`: tính oxy theo `d` cuối bước; bước vừa chạm `oxy == 0` dưới nước vẫn tăng `zero_oxy_ticks` (đủ `choke_interval_ticks` mới trừ 1 HP); khi `hp == 0`, bỏ giỏ LIFO phát `faint` rồi `gather_end(fainted)`; tại `interact` ưu tiên bến (`docked`) trước hái mặt nước (`d <= surface_depth`); `catch` chỉ dưới nước và khi `catch_cd_ticks == 0`; `hold_full` giữ nguyên cá/nút và không đặt hồi chiêu.
-  - `quan`: dùng `decimal.Decimal` tính tỷ lệ ngưỡng boa (`tip_min_patience_ratio`), tiền boa `floor`, và cộng/trừ uy tín tránh sai số nhị phân trước `math.floor`; kiểm tổng giữ chỗ `reserved <= stock` ngay khi khởi tạo `QuanSim` (trả `BadInput` → mã thoát `2` trước khi ghi file); khi hết giờ (`time_left_ticks == 0`), khách `eating` trả tiền (`closing`), khách `waiting` rời bàn (`closing`, không phạt uy tín).
+- **Bất biến Phase 1 (Contract v1.0):**
+  - `gather`: tính oxy theo `d` cuối bước; bước vừa chạm `oxy == 0` dưới nước vẫn tăng `zero_oxy_ticks` (đủ `choke_interval_ticks` mới trừ 1 HP); khi `hp == 0`, bỏ giỏ LIFO phát `faint` rồi `gather_end(fainted)`; tại `interact` ưu tiên bến trước hái; `catch` chỉ dưới nước khi `catch_cd_ticks == 0`; `hold_full` giữ nguyên cá/nút và không đặt hồi chiêu.
+  - `quan`: dùng `decimal.Decimal` tính ngưỡng boa (`tip_min_patience_ratio`), boa `floor`, và uy tín; kiểm giữ chỗ `reserved <= stock` khi khởi tạo `QuanSim`; hết giờ thì khách `eating` trả tiền (`closing`), khách `waiting` rời (`closing`, không phạt uy tín).
+- **Bất biến Phase 2 (Contract v1.1):**
+  - `gather`: thứ tự tick cố định: timer/regrow → bơi/oxy/ngạt (ngạt xuyên bất tử, không rơi hàng) → cập nhật quái theo id & hit (`floor(hold * 0.5)` LIFO, 90 tick bất tử, recoil 60 tick) → `interact` → `catch` (dùng vị trí cá TRƯỚC khi cá bơi!) → hết giờ → cá bơi & phản xạ mép/góc → sinh cá mới (`360·k`, trần 12, clearance > 1 m).
+  - `pause`: cạnh lên `pause` chỉ tăng `tick` ngoài và đóng băng `sim_tick`/`phase_tick`/timer; bỏ qua hành động & `buy`; cạnh lên `pause` kế phát `resumed` và chạy gameplay ngay trong tick đó. Giữ nút qua chuyển pha không tạo cạnh mới.
+  - `day` & `shop`: trong `day`, menu quán lọc theo `day_plan.dishes`; ngất sáng vẫn mở quán kho rỗng; trong Shop xử lý `buy` trước `shop_done`; nâng cấp `oxygen`/`hp` lưu vào `upgrades` ngay nhưng chỉ chép sang `active_upgrades` khi dựng Ngày kế tiếp.
 
 ## Nên tránh
-- Không sửa `docs/contracts/`, `game.contract.json` (khóa contract) hoặc schema kho khi chưa báo cả nhóm (đổi hợp đồng ảnh hưởng mọi module).
-- Không sửa `tools/check_team.py` hoặc `tests/test_team_check.py` (làm việc 1 mình nên ghi trung thực `team_size: 1` ở `TEAM.md` và `game.contract.json`).
+- Không sửa `tools/check_team.py` hoặc `tests/test_team_check.py`.
 - Không làm hỏng nhánh chính: trước khi đẩy, chạy test.
-- Không bịa yêu cầu: chỗ mơ hồ thì ghi `docs/clarify.md` và hỏi PO.
-- Không sửa test cho xanh khi luật sai; phải sửa luật hoặc ghi lý do đổi test trong commit.
-
-## Quy tắc làm việc với agent
-- Mỗi agent một việc rõ ràng (một lát). Cho agent đọc PRD/ticket đúng phase và hợp đồng kho trước.
-- Agent làm xong phải chạy test và ghi kết quả vào mô tả commit hoặc `docs/proof/`; người đọc lại thay đổi trước khi đẩy.
-- Sáng tạo thêm được khuyến khích nhưng phải tắt ở headless (xem README, mục "Tự do sáng tạo").
+- Không bịa yêu cầu: chỗ mơ hồ thì ghi `docs/clarify.md`.
+- Không sửa test cho xanh khi luật sai; nếu Contract mới thay đổi hành vi cũ (v1.0 → v1.1), ghi rõ lý do trong commit và `docs/verification/`.
 
 ## Skills / hooks của nhóm
-- `verify-contract` ([`.agents/skills/verify-contract/SKILL.md`](.agents/skills/verify-contract/SKILL.md)): dùng sau mỗi lát code và trước khi gắn tag để kiểm tra contract, chạy `unittest`, kiểm tra tính tất định từng byte, kiểm tra bàn giao kho 2 tiến trình và lưu bằng chứng vào `docs/proof/phase-n/`.
-- `phase-release` ([`.agents/skills/phase-release/SKILL.md`](.agents/skills/phase-release/SKILL.md)): dùng cuối mỗi phase để hoàn tất checklist DoD (`AGENTS.md`, `docs/verification/`, `docs/clarify.md`, `docs/ai-usage-log.md`, `CHANGELOG.md`), đẩy `main` và gắn tag `phase-n`.
+- `verify-contract` ([`.agents/skills/verify-contract/SKILL.md`](.agents/skills/verify-contract/SKILL.md))
+- `phase-release` ([`.agents/skills/phase-release/SKILL.md`](.agents/skills/phase-release/SKILL.md))

@@ -1,0 +1,14 @@
+# Kế hoạch Phase 2 (≤ 1 trang)
+
+- **Mục tiêu:** Nâng cấp lên **Test Contract v1.1** theo **TICKET-02 — Một ngày ở chợ nổi**: cập nhật số liệu chuẩn (6 nút hái gồm kèo nèo, 8 đàn cá bơi & sinh cá tối đa 12 đàn, Cá Sấu Năm Chèo M1/M2, 2 bếp B1–B2, 4 bàn T1–T4, 6 món ăn), bổ sung chế độ `--mode day --days 1..5`, `ShopSim` nâng cấp oxy/Máu, `pause`/`resumed`, giao diện chơi hoàn chỉnh và đẩy tag `phase-2` kèm bằng chứng thật.
+
+- **Việc / người / phụ thuộc (làm độc lập 1 thành viên — `giangj`):**
+  1. **Re-planning & Contract v1.1 (`AC-P2-01`)**: Cập nhật `game.contract.json` (`1.1`), `chonoi/__init__.py`, `chonoi/inventory.py` (6 loại nguyên liệu), `chonoi/contract.py`, `docs/contracts/README.md`, `AGENTS.md`, `docs/plan/phase-2.md`. *(Phụ thuộc Phase 1).*
+  2. **Lát 1 & 2 — `chonoi/sim/gather.py` (`AC-P2-02`..`AC-P2-04`)**: Đàn cá tự bơi 1.5 m/s, đổi hướng theo seed mỗi 120 tick, phản xạ biên/góc, sinh thêm tại `360·k` (trần 12, clearance > 1 m); Cá Sấu Năm Chèo (`M1` từ Ngày 1, `M2` từ Ngày 3) tuần tra / truy đuổi / chạm (`-1 HP`, rơi `floor(hold/2)` LIFO, bất tử 90 tick, recoil 60 tick) và `faint(cause="monster")`. *(Phụ thuộc Bước 1).*
+  3. **Lát 3 & 4 — `inputs.py`, `quan.py`, `shop.py`, `day.py`, `scenario.py`, `runner.py`, `headless.py` (`AC-P2-05`..`AC-P2-11`)**: Hỗ trợ `pause`, `shop_done`, `buy`; lọc thực đơn theo `day_plan` trong `day`; xây dựng `ShopSim` (nâng cấp `oxygen` và `hp` hiệu lực từ Ngày kế, tự đóng sau 600 tick hoặc `shop_done`) và `DaySim` (`gather -> quan -> shop`); kiểm scenario `day` và quái chặt chẽ; cập nhật 3 assertion v1.0 cũ sang v1.1 có ghi lý do. *(Phụ thuộc Bước 1 & 2).*
+  4. **Client UI — `chonoi/live.py` & `chonoi/web/index.html` (`AC-P2-14`)**: Hỗ trợ `--mode day`, menu chính, màn `DayIntro` / `EveningIntro` / `DayResult` / `Shop` / `Summary`, menu tạm dừng (`Esc`/`P`), cảnh báo `Thủy quái!` + viền tím, `Hết hơi!`, hiển thị đầy đủ 6 nút, 3 loài cá, Cá Sấu, 2 bếp, 4 bàn, danh sách kế hoạch ngày và chữ ≥ 18 px ở 1280×720. *(Phụ thuộc Bước 3).*
+  5. **QA, Smoke tích hợp phút 20, Retro & Tag `phase-2` (`AC-P2-12`, `AC-P2-13`)**: Viết `tests/test_phase2_rules.py`, chạy smoke 2 tiến trình `gather -> quan` và smoke `day --days 2`, kiểm tra hiệu năng 1 Ngày (< 20 s) và regression P1, lưu bằng chứng vào `docs/proof/phase-2/`, hoàn thiện `docs/verification/phase-2.md` & `docs/retro.md`, gắn tag `phase-2`. *(Phụ thuộc Bước 3 & 4).*
+
+- **Rủi ro & giảm thiểu:**
+  - *Sai khác thứ tự xử lý trong tick giữa ngạt, Cá Sấu, hái, bắt cá (trước khi cá bơi), hết giờ và đổi pha:* bám sát từng bước mục 4.5 TICKET-02 và viết test biên riêng.
+  - *Thay đổi 3 assertion test cũ của Phase 1 (`fish_initial` 6→8, `--mode day` hợp lệ, `attack` bỏ qua thay vì mã 2):* giữ nguyên test hành vi cốt lõi Phase 1, chỉ cập nhật đúng các assertion bị Contract v1.1 thay thế và ghi lý do minh bạch trong commit & `docs/verification/phase-2.md`.
