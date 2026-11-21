@@ -54,8 +54,11 @@ class DaySim:
             plans[dnum] = {"dishes": dishes, "ingredients": ing}
         return plans
 
+    def _plan_key(self) -> int:
+        return ((self.day - 1) % 5) + 1
+
     def _current_plan(self):
-        plan = self._plans[self.day]
+        plan = self._plans[self._plan_key()]
         return {"dishes": dict(plan["dishes"]), "ingredients": dict(plan["ingredients"])}
 
     def _make_gather(self):
@@ -72,7 +75,7 @@ class DaySim:
         )
 
     def _make_quan(self, inventory):
-        plan = self._plans[self.day]
+        plan = self._plans[self._plan_key()]
         return QuanSim(
             self.tuning,
             self.quan_sc,

@@ -20,9 +20,23 @@
   .shop-item { background: #2b2015; border: 1px solid #59432a; border-radius: 12px; padding: 14px; }
   .shop-item h3 { margin: 0 0 6px; color: #38b2ac; font-size: 19px; }
   .stat-list { background: #17110b; border: 1px solid #453523; border-radius: 10px; padding: 12px 16px; margin: 10px 0; font-size: 17px; }
+  /* Chế độ tương phản cao (High Contrast) */
+  body.high-contrast { background: #000000 !important; color: #ffffff !important; }
+  body.high-contrast canvas { filter: contrast(1.2); }
+  body.high-contrast .card { background: #000000 !important; border: 3px solid #ffffff !important; box-shadow: none !important; }
+  body.high-contrast .card h1, body.high-contrast .card h2 { color: #ffff00 !important; }
+  body.high-contrast .card p { color: #ffffff !important; }
+  body.high-contrast button { background: #000000 !important; color: #ffffff !important; border: 2px solid #ffffff !important; }
+  body.high-contrast button.primary { background: #ffff00 !important; color: #000000 !important; border: 2px solid #ffffff !important; font-weight: 800 !important; }
+  body.high-contrast .stat-list { background: #000000 !important; border: 2px solid #ffffff !important; color: #ffffff !important; }
+  body.high-contrast .shop-item { background: #000000 !important; border: 2px solid #ffffff !important; }
+  body.high-contrast .shop-item h3 { color: #00ffff !important; }
+  .hc-pill { position: fixed; top: 12px; right: 16px; z-index: 30; font: 700 14px system-ui, sans-serif; padding: 7px 14px; border-radius: 8px; border: 2px solid #6b5234; background: #211910; color: #fbf3e6; cursor: pointer; }
+  body.high-contrast .hc-pill { background: #000000 !important; color: #ffff00 !important; border: 2px solid #ffffff !important; }
 </style>
 </head>
 <body>
+<button class="hc-pill" id="btn-hc-pill" title="Phím tắt: H">Tương phản cao (H)</button>
 <canvas id="c"></canvas>
 
 <!-- Menu chính -->
@@ -31,12 +45,13 @@
     <h1>Quán Ăn Chợ Nổi</h1>
     <p>Theo chân Út Sen lặn sông Chín Khúc buổi sáng, nấu món miền Tây đãi khách buổi tối trên nhà bè của Má Tư qua 5 Ngày.</p>
     <div class="stat-list">
-      <div><strong>Điều khiển:</strong> WASD / mũi tên di chuyển · <strong>E</strong> tương tác / hái / cập bến · <strong>Space</strong> bắt cá · <strong>Esc / P</strong> tạm dừng · <strong>R</strong> chơi lại</div>
+      <div><strong>Điều khiển:</strong> WASD / mũi tên di chuyển · <strong>E</strong> tương tác / hái / cập bến · <strong>Space</strong> bắt cá · <strong>Esc / P</strong> tạm dừng · <strong>H</strong> tương phản cao · <strong>R</strong> chơi lại</div>
     </div>
     <div class="btn-row">
       <button class="primary" id="btn-play-day">Chơi (5 Ngày)</button>
       <button id="btn-play-gather">Chơi thử Lặn &amp; Hái</button>
       <button id="btn-play-quan">Chơi thử Mở Quán</button>
+      <button id="btn-hc-menu">Tương phản cao (H)</button>
       <button id="btn-quit">Thoát</button>
     </div>
   </div>
@@ -49,6 +64,7 @@
     <p>Đồng hồ, oxy, kiên nhẫn và thời gian Shop đang được giữ nguyên.</p>
     <div class="btn-row">
       <button class="primary" id="btn-resume">Tiếp tục (Esc/P)</button>
+      <button id="btn-hc-pause">Tương phản cao (H)</button>
       <button id="btn-back-menu">Về menu</button>
     </div>
   </div>
@@ -101,6 +117,23 @@ let showMainMenu = false, menuInitialized = false;
 let lastPhaseKey = "", introDeadline = 0, introMode = "";
 let dayMetrics = { served: 0, left: 0, shiftEarned: 0, tipSum: 0, repDelta: 0, repStart: 3.0, dishCounts: {} };
 let seenEventCount = 0;
+
+let highContrast = new URLSearchParams(location.search).get("hc") === "1" || (function() {
+  try { return localStorage.getItem("chonoi_hc") === "1"; } catch(e) { return false; }
+})();
+
+function applyHighContrast() {
+  document.body.classList.toggle("high-contrast", highContrast);
+  const label = `Tương phản cao: ${highContrast ? "BẬT" : "TẮT"} (H)`;
+  const p = document.getElementById("btn-hc-pill"); if (p) p.textContent = label;
+  const m = document.getElementById("btn-hc-menu"); if (m) m.textContent = label;
+  const pa = document.getElementById("btn-hc-pause"); if (pa) pa.textContent = label;
+}
+function toggleHighContrast() {
+  highContrast = !highContrast;
+  try { localStorage.setItem("chonoi_hc", highContrast ? "1" : "0"); } catch (e) {}
+  applyHighContrast();
+}
 
 const KIND_COLOR = { ca_loc: "#7c9a52", ca_linh: "#d6e6f2", ca_keo: "#d9a066", bong_dien_dien: "#f2c230", bong_sung: "#e8799c", keo_neo: "#8fcf6b" };
 const KIND_NAME = { ca_loc: "Cá lóc", ca_linh: "Cá linh", ca_keo: "Cá kèo", bong_dien_dien: "Bông điên điển", bong_sung: "Bông súng", keo_neo: "Kèo nèo" };
@@ -183,6 +216,7 @@ function dismissIntro() {
 
 addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
+  if (k === "h") { toggleHighContrast(); return; }
   if (introDeadline > 0) { dismissIntro(); return; }
   if (showMainMenu || quitScreen) return;
   if (e.repeat) { if (k === " " || k.startsWith("arrow")) e.preventDefault(); return; }
@@ -221,6 +255,10 @@ document.getElementById("btn-resume").onclick = () => sendPulse("pause");
 document.getElementById("btn-back-menu").onclick = () => { showMainMenu = true; updateModals(); };
 document.getElementById("btn-shop-done").onclick = () => sendPulse("shop_done");
 document.getElementById("btn-intro-ok").onclick = () => dismissIntro();
+const btnHcPill = document.getElementById("btn-hc-pill"); if (btnHcPill) btnHcPill.onclick = toggleHighContrast;
+const btnHcM = document.getElementById("btn-hc-menu"); if (btnHcM) btnHcM.onclick = toggleHighContrast;
+const btnHcPause = document.getElementById("btn-hc-pause"); if (btnHcPause) btnHcPause.onclick = toggleHighContrast;
+applyHighContrast();
 document.getElementById("btn-restart-end").onclick = () => {
   fetch("/restart", { method: "POST" });
   lastPhaseKey = ""; seenEventCount = 0;
@@ -471,13 +509,22 @@ function drawGather(w, h) {
     else if (nearFish) text("[Space] Bắt cá", px, py - 1.5 * s, { size: 15, weight: "700", align: "center", color: "#80deea" });
   }
 
-  // Viền cảnh báo Thủy quái
+  // Viền & chữ cảnh báo Thủy quái gần (chữ + biểu tượng, hỗ trợ tương phản cao)
   if (dangerNear) {
-    ctx.strokeStyle = "#9c27b0"; ctx.lineWidth = 8; ctx.strokeRect(4, 4, w - 8, h - 8);
-    text("⚠ Thủy quái!", w / 2, 74, { size: 22, weight: "800", align: "center", color: "#ea80fc" });
+    ctx.strokeStyle = highContrast ? "#ffff00" : "#9c27b0";
+    ctx.lineWidth = highContrast ? 10 : 8;
+    ctx.strokeRect(4, 4, w - 8, h - 8);
+    text("⚠ THỦY QUÁI GẦN!", w / 2, 74, { size: 24, weight: "900", align: "center", color: highContrast ? "#ffff00" : "#ea80fc" });
   }
-  if (p && p.oxygen_ticks === 0) {
-    text("⚠ Hết hơi!", w / 2, dangerNear ? 100 : 74, { size: 22, weight: "800", align: "center", color: "#ff5252" });
+
+  // Cảnh báo Oxy sắp hết / Hết hơi (chữ + biểu tượng, hỗ trợ tương phản cao)
+  if (p && p.oxygen_max_ticks) {
+    const lowOxy = p.oxygen_ticks < p.oxygen_max_ticks * 0.25;
+    if (p.oxygen_ticks === 0) {
+      text("⚠ HẾT HƠI!", w / 2, dangerNear ? 106 : 74, { size: 24, weight: "900", align: "center", color: highContrast ? "#ff3333" : "#ff5252" });
+    } else if (lowOxy) {
+      text("⚠ OXY SẮP HẾT!", w / 2, dangerNear ? 106 : 74, { size: 24, weight: "900", align: "center", color: highContrast ? "#ffff00" : "#ff7043" });
+    }
   }
 
   // HUD trên >= 18px
@@ -575,6 +622,9 @@ function drawQuan(w, h) {
       if (c.state === "waiting" && c.patience_ticks_left !== undefined) {
         const frac = c.patience_ticks_left / patMax;
         bar(cx - 0.9 * s, cy + 0.65 * s, 1.8 * s, 7, frac, frac < 0.25 ? "#ff1744" : "#66bb6a");
+        if (frac < 0.25) {
+          text("⚠ SẮP GIẬN!", cx, cy - 1.25 * s, { size: 13, weight: "800", align: "center", color: highContrast ? "#ffff00" : "#ff1744" });
+        }
       }
     }
   });
@@ -608,13 +658,23 @@ function drawQuan(w, h) {
   const stockParts = Object.keys(availFresh).sort().map((k) => `${KIND_NAME[k] || k}×${availFresh[k]}(${Math.floor(availMin[k])}%)`);
   const spTxt = spoiledStock ? ` · [⚠ ${spoiledStock} ươn]` : "";
   text("Kho khả dụng: " + (stockParts.join(", ") || "(trống)") + spTxt, 16, 62, { size: 18, color: spoiledStock ? "#ff8a80" : "#cfd8dc" });
-  text("WASD đi · E tương tác (bếp / bàn) · Esc/P tạm dừng · R chơi lại", w - 16, h - 14, { size: 18, align: "right", color: "#9fb3c0" });
+
+  // Cảnh báo Khách sắp giận (chữ + biểu tượng, hỗ trợ tương phản cao)
+  let anyAngryCust = false;
+  (snap.customers || []).forEach((c) => {
+    if (c.state === "waiting" && c.patience_ticks_left !== undefined && (c.patience_ticks_left / patMax < 0.25)) anyAngryCust = true;
+  });
+  if (anyAngryCust) {
+    text("⚠ KHÁCH SẮP GIẬN!", w / 2, 64, { size: 24, weight: "900", align: "center", color: highContrast ? "#ffff00" : "#ff1744" });
+  }
+
+  text("WASD đi · E tương tác (bếp / bàn) · Esc/P tạm dừng · H tương phản · R chơi lại", w - 16, h - 14, { size: 18, align: "right", color: "#9fb3c0" });
 }
 
 function frame() {
   requestAnimationFrame(frame);
   const [w, h] = fit();
-  ctx.fillStyle = "#10161c"; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = highContrast ? "#000000" : "#10161c"; ctx.fillRect(0, 0, w, h);
   if (quitScreen) {
     text("Cảm ơn bạn đã ghé Quán Ăn Chợ Nổi! Có thể đóng tab trình duyệt.", w / 2, h / 2, { align: "center", size: 22 });
     return;
