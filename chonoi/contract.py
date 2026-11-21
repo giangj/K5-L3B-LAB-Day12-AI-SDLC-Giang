@@ -253,13 +253,23 @@ def _validate_day_plan_and_shop(dp, shop, menu):
                 raise BadInput(f"tuning.shop.upgrades.{uid}[{lvl - 1}].{key} phải > 0")
 
 
+def _validate_freshness(fr):
+    if not isinstance(fr, dict) or not {"initial", "gather_decay_per_s", "quan_decay_per_s", "spoiled_below"} <= set(fr):
+        raise BadInput("tuning.freshness phải có initial, gather_decay_per_s, quan_decay_per_s, spoiled_below")
+    _between("freshness.initial", fr.get("initial"), 1, 100)
+    _between("freshness.gather_decay_per_s", fr.get("gather_decay_per_s"), 0, 100)
+    _between("freshness.quan_decay_per_s", fr.get("quan_decay_per_s"), 0, 100)
+    _between("freshness.spoiled_below", fr.get("spoiled_below"), 0, fr["initial"])
+
+
 def validate_tuning(t):
     if not isinstance(t, dict):
         raise BadInput("thiếu khối tuning")
     g, q, menu = t.get("gather"), t.get("quan"), t.get("menu")
-    dp, shop = t.get("day_plan"), t.get("shop")
+    dp, shop, freshness = t.get("day_plan"), t.get("shop"), t.get("freshness")
     if not isinstance(g, dict) or not isinstance(q, dict) or not isinstance(menu, dict):
         raise BadInput("tuning phải có gather, quan, menu")
+    _validate_freshness(freshness)
     _validate_gather(g)
     _validate_quan_and_menu(q, menu)
     _validate_day_plan_and_shop(dp, shop, menu)

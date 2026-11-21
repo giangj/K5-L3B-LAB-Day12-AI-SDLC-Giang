@@ -1,8 +1,4 @@
-"""Quán Ăn Chợ Nổi — starter headless (Python, chỉ dùng thư viện chuẩn).
+"""Gói mô phỏng & kiểm thử Quán Ăn Chợ Nổi (Test Contract v1.2)."""
 
-Phần KHUNG (giảng viên cấp, đừng sửa nếu không cần): cli, inputs, scenario loader,
-rng, ids, jsonl, inventory, runner. Phần LUẬT CHƠI (nhóm viết): chonoi/sim/*.py.
-"""
-
-CONTRACT_VERSION = "1.1"
-TICK_HZ = 60
+CONTRACT_VERSION = "1.2"
+TICK_RATE = 60

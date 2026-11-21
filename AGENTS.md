@@ -23,6 +23,11 @@
   - `gather`: thứ tự tick cố định: timer/regrow → bơi/oxy/ngạt (ngạt xuyên bất tử, không rơi hàng) → cập nhật quái theo id & hit (`floor(hold * 0.5)` LIFO, 90 tick bất tử, recoil 60 tick) → `interact` → `catch` (dùng vị trí cá TRƯỚC khi cá bơi!) → hết giờ → cá bơi & phản xạ mép/góc → sinh cá mới (`360·k`, trần 12, clearance > 1 m).
   - `pause`: cạnh lên `pause` chỉ tăng `tick` ngoài và đóng băng `sim_tick`/`phase_tick`/timer; bỏ qua hành động & `buy`; cạnh lên `pause` kế phát `resumed` và chạy gameplay ngay trong tick đó. Giữ nút qua chuyển pha không tạo cạnh mới.
   - `day` & `shop`: trong `day`, menu quán lọc theo `day_plan.dishes`; ngất sáng vẫn mở quán kho rỗng; trong Shop xử lý `buy` trước `shop_done`; nâng cấp `oxygen`/`hp` lưu vào `upgrades` ngay nhưng chỉ chép sang `active_upgrades` khi dựng Ngày kế tiếp.
+- **Bất biến Phase 3 (Contract v1.2):**
+  - Kho hàng dùng mảng cá thể `{"items": [{"id": "I1", "kind": ..., "fresh": ...}]}` (`exit 2` nếu nhận kho đếm cũ); `I1, I2, ...` cấp liên tục xuyên pha và Ngày; xuất file nguyên tử (`os.replace`) sắp theo `id_key`; LIFO giữ thứ tự vào giỏ.
+  - Tính độ tươi bằng `fractions.Fraction` theo đơn vị `1/240` điểm tươi (`0.5/s = 2/240`, `0.25/s = 1/240`); hàng mới `fresh=100` chỉ hao từ bước sau; `paused`, món chín và Shop không hao; phát `spoiled` đúng 1 lần theo `id_key` khi đi từ `>= 30` xuống `< 30`.
+  - Ở `quan`, sau khi hao tươi và phát hết `spoiled`, nhả toàn bộ giữ chỗ của các đơn bị ươn và thử giữ lại đúng 1 lần theo `(order_tick, id_key(table_id))` (chọn tươi nhất, hòa theo `id_key`, thiếu chuyển `unfulfillable`); `cook_started` tiêu đúng ID đã giữ, chốt `base_price = floor(list_price * avg_fresh / 100)`, `items` sắp `(kind, id_key)`; boa `floor(base_price * 0.2)`.
+  - Trong `DaySim`, đồng bộ `money`/`earned`/`reputation`/`upgrades`/`stock` ra lớp bọc ngay mỗi tick (kể cả khi pha con chưa `done`).
 
 ## Nên tránh
 - Không sửa `tools/check_team.py` hoặc `tests/test_team_check.py`.

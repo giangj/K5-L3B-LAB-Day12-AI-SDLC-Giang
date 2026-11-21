@@ -1,22 +1,24 @@
-# Hợp đồng tích hợp (Contract v1.1 — Phase 2)
+# Hợp đồng tích hợp (Contract v1.2 — Phase 3)
 
-> Cập nhật từ v1.0 sang v1.1 theo TICKET-02 (thêm 2 nguyên liệu, 3 món mới, cá bơi/sinh, Cá Sấu Năm Chèo, chế độ `day`, `Shop` nâng cấp và `pause`).
+> Cập nhật từ v1.1 lên v1.2 theo TICKET-03 (*Mùa Nước Nổi*: thay thế kho đếm theo loại bằng kho cá thể `{id, kind, fresh}`, thêm độ tươi, sự kiện `spoiled`, giữ chỗ theo ID tươi nhất và giá món theo độ tươi).
 
-## 1. Schema file kho (`gather` → `quan`, vẫn dùng đếm theo loại ở v1.1)
-- Khóa gốc duy nhất `"items"`:
+## 1. [THAY THẾ] Schema file kho (`gather` → `quan`)
+- Khóa gốc duy nhất `"items"`, giá trị là **mảng cá thể**:
   ```json
-  {"items": {"bong_sung": 2, "ca_keo": 2, "keo_neo": 1}}
+  {"items": [{"id": "I1", "kind": "ca_linh", "fresh": 100}, {"id": "I2", "kind": "ca_loc", "fresh": 97.5}]}
   ```
-- Danh mục v1.1 gồm 6 loại: `ca_loc`, `ca_linh`, `ca_keo`, `bong_dien_dien`, `bong_sung`, `keo_neo`.
-- Trong `--mode day`, bàn giao từ `gather` sang `quan` diễn ra trong bộ nhớ cùng tick phát `gather_end` (kể cả khi `fainted` → kho rỗng `{}`), và kho dư bị xóa sau khi đóng `Shop`. Hai tiến trình rời vẫn bàn giao qua `--inventory-out` / `--inventory` như v1.0.
+- Kho rỗng là `{"items": []}`. File kho đếm theo loại cũ bị trả mã thoát `2`.
+- Mỗi cá thể có `id` chuỗi duy nhất khác rỗng (`I1, I2, ...` cấp liên tục xuyên pha và Ngày), `kind` thuộc 6 loại nguyên liệu v1.1, `fresh` hữu hạn trong `[0, 100]`.
+- Xuất file `--inventory-out` chỉ ghi một lần khi có `gather_end` (ngất ghi `{"items": []}`), sắp theo `id_key`, ghi nguyên tử qua file tạm cùng thư mục rồi `os.replace`.
+- Trong `--mode day`, bàn giao từ `gather` sang `quan` diễn ra trong bộ nhớ ở cùng tick chuyển pha và không hao tươi thêm; `Shop` hiển thị `stock` thô theo cùng schema cá thể và không hao tươi.
 
 ## 2. Giao diện giữa `sim/*` và `client/ui` (`chonoi/live.py` ↔ `chonoi/web/index.html`)
-- `GET /state`: bổ sung `meta.tuning` (`gather`, `quan`, `menu`, `shop`, `day_plan`), trường `monsters[]`, `fish[].age_ticks` ở `gather`; thêm `day`, `day_plan`, `upgrades`, `active_upgrades`, `stock` (ở `shop`), `state: "paused"` khi tạm dừng trong chế độ `day`.
-- `POST /input`: nhận `{"move": [dx, dy], "interact": bool, "catch": bool, "pause": bool, "shop_done": bool, "buy": str|null}`.
-- `POST /mode`: đổi chế độ chơi (`day`, `gather`, `quan`) từ menu chính trên UI live.
+- `GET /state`: thêm `tuning.freshness`; trong snapshot, `hold` (`gather`), `stock` (`quan`, `shop`) và `customers[].reserved` dùng mảng cá thể/ID theo Contract v1.2; HUD web đọc được độ tươi từng cá thể và đánh dấu hàng `ƯƠN` (`< 30`).
+- `POST /input` & `POST /mode`: giữ nguyên v1.1 (`move`, `interact`, `catch`, `pause`, `shop_done`, `buy`).
 
-## 3. Sự kiện bổ sung v1.1 (mục 4.4 TICKET-02)
-- **Gather:** `monster_hit` (`monster_id`, `hp`, `lost`, `pos`), `fish_spawned` (`id`, `kind`, `pos`), `faint` (thêm `cause: "monster"` nếu do Cá Sấu chạm).
-- **Pause:** `paused` (`{}`), `resumed` (`{}`).
-- **Day & Shop:** `day_start` (`{}`), `day_plan` (`dishes`, `ingredients`), `phase_start` (`{}`), `bought` (`upgrade`, `level`, `price`, `money`), `buy_failed` (`action`, `reason`: `funds` / `max_level` / `out_of_stock` / `unknown`), `shop_end` (`reason`: `done` / `time`).
-- Khi chạy `--mode day`, vỏ mọi dòng event có thêm trường `"day"`, và dòng `end` có thêm `"days_completed"`.
+## 3. Sự kiện & payload mới / thay đổi ở v1.2 (TICKET-03)
+- **`spoiled` (mới):** phát đúng 1 lần theo thứ tự `id_key` khi cá thể đi từ `fresh >= 30` xuống `< 30` ở đầu tick (`{"item_id", "kind", "location": "hold" | "stock"}`).
+- **`cook_started.data.items`:** mảng cá thể `{id, kind, fresh}` sắp theo `(kind, id_key)`; `base_price = floor(giá_niêm_yết × trung_bình_fresh / 100)`.
+- **`paid` & `served`:** dùng `base_price` đã chốt theo độ tươi; boa `floor(base_price × 0.2)`.
+- **`monster_hit.data.lost` & `faint.data.lost`:** mảng cá thể `{id, kind, fresh}` theo thứ tự bỏ LIFO.
+- **`gather_end.data.inventory`:** theo schema `{"items": [...]}` (với `fresh` được bảo toàn chính xác ở ngưỡng `30`).
