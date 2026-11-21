@@ -1,0 +1,113 @@
+﻿python3 : test_state_input_and_clean_stop (test_live.LiveServerTest.test_state_input_and_clean_stop) ... ok
+At line:4 char:8
++ $res = python3 -m unittest discover -s tests -v 2>&1
++        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (test_state_inpu...an_stop) ... ok:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+test_catch_fish_cooldown_hold_full_and_final_tick 
+(test_phase1_rules.GatherRulesP1.test_catch_fish_cooldown_hold_full_and_final_tick)
+AC-P1-06, AC-P1-07: catch dưới nước, tie-break id, hồi chiêu t+30, hold_full không hồi, tick cuối. ... ok
+test_dive_surface_and_oxygen_refill (test_phase1_rules.GatherRulesP1.test_dive_surface_and_oxygen_refill)
+AC-P1-02, AC-P1-03: dive/surface chỉ phát khi đổi phía surface_depth; oxy trừ dưới nước và hồi trên mặt nước. ... ok
+test_gather_nodes_tiebreak_hold_full_and_regrow 
+(test_phase1_rules.GatherRulesP1.test_gather_nodes_tiebreak_hold_full_and_regrow)
+AC-P1-05: hái nút ở mặt nước (hòa chọn id nhỏ), dưới nước bị chặn, hold_full, node_regrown và hái ngay. ... ok
+test_oxygen_empty_choke_surface_save_and_faint_lifo 
+(test_phase1_rules.GatherRulesP1.test_oxygen_empty_choke_surface_save_and_faint_lifo)
+AC-P1-03, AC-P1-04: oxygen_empty, ngạt đúng t+59, nổi lên cứu ở t+59, ngất bỏ LIFO & kho rỗng. ... ok
+test_customer_schedule_reservation_and_no_dish 
+(test_phase1_rules.QuanRulesP1.test_customer_schedule_reservation_and_no_dish)
+AC-P1-08: lịch khách (tick 120, mỗi 900 tick), chọn món nấu được, giữ chỗ, no_dish. ... ok
+test_end_to_end_gather_to_quan_and_contract_meta 
+(test_phase1_rules.QuanRulesP1.test_end_to_end_gather_to_quan_and_contract_meta)
+AC-P1-01, AC-P1-14: 2 tiến trình từ hái/bắt cá -> cập bến -> quán phục vụ -> trả tiền, tất định từng byte. ... ok
+test_full_cook_serve_tip_boundary_and_reputation_precision 
+(test_phase1_rules.QuanRulesP1.test_full_cook_serve_tip_boundary_and_reputation_precision)
+AC-P1-10, AC-P1-11: nấu -> ready (ready_ticks=0) -> nhấc -> phục vụ đúng ngưỡng boa 50%, uy tín & điểm. ... ok
+test_interact_priority_and_non_interactable_cancels_turn 
+(test_phase1_rules.QuanRulesP1.test_interact_priority_and_non_interactable_cancels_turn)
+AC-P1-09: hòa khoảng cách chọn bếp trước bàn; đối tượng gần nhất không tương tác được thì bỏ lượt. ... ok
+test_patience_cleanup_and_closing_settlement 
+(test_phase1_rules.QuanRulesP1.test_patience_cleanup_and_closing_settlement)
+AC-P1-12: khách bỏ đi hết kiên nhẫn (trừ uy tín, dọn bếp/tay); đóng ca trả ngay khách eating và closing không trừ uy 
+tín. ... ok
+test_scenario_contradictions_exit_2_without_output 
+(test_phase1_rules.QuanRulesP1.test_scenario_contradictions_exit_2_without_output)
+AC-P1-13: mọi mâu thuẫn scenario quán trả mã 2 trước khi tạo file out. ... ok
+test_ac_p2_01_contract_v11_structure (test_phase2_rules.Phase2CoreRules.test_ac_p2_01_contract_v11_structure)
+AC-P2-01: game.contract.json đạt chuẩn v1.1 (6 nút, 8 cá, 3 loài, quái M1/M2, 2 bếp, 4 bàn, 6 món, D1-D5, Shop). ... ok
+test_ac_p2_02_fish_swim_reflection_and_spawn 
+(test_phase2_rules.Phase2CoreRules.test_ac_p2_02_fish_swim_reflection_and_spawn)
+AC-P2-02: đàn cá bơi 1.5 m/s, phản xạ mép/góc, sinh cá tại 360*k với clearance > 1 m, trần 12. ... ok
+test_ac_p2_03_monster_patrol_chase_hit_recoil_and_faint 
+(test_phase2_rules.Phase2CoreRules.test_ac_p2_03_monster_patrol_chase_hit_recoil_and_faint)
+AC-P2-03: Cá Sấu patrol/chase, hit (-1 HP, rơi floor(hold/2) LIFO, 90t bất tử, 60t recoil), faint cause=monster. ... ok
+test_ac_p2_04_choke_pierces_invuln_without_item_drop 
+(test_phase2_rules.Phase2CoreRules.test_ac_p2_04_choke_pierces_invuln_without_item_drop)
+AC-P2-04: ngạt xuyên bất tử (invuln_ticks > 0) và không làm rơi hàng. ... ok
+test_ac_p2_05_two_stoves_four_tables_and_new_dishes 
+(test_phase2_rules.Phase2CoreRules.test_ac_p2_05_two_stoves_four_tables_and_new_dishes)
+AC-P2-05: 2 bếp B1/B2 nấu song song, 4 bàn T1..T4 và món mới lau_mam. ... ok
+test_ac_p2_06_pause_freezes_sim_and_preserves_button_edge 
+(test_phase2_rules.Phase2CoreRules.test_ac_p2_06_pause_freezes_sim_and_preserves_button_edge)
+AC-P2-06: pause đóng băng sim_tick/phase_tick/timer, bỏ qua hành động & buy; resumed chạy ngay trong tick đó. ... ok
+test_ac_p2_07_to_10_day_mode_menu_filter_shop_and_multiday_upgrades 
+(test_phase2_rules.Phase2CoreRules.test_ac_p2_07_to_10_day_mode_menu_filter_shop_and_multiday_upgrades)
+AC-P2-07..10: vòng Ngày 1->3, lọc menu theo day_plan, ngất mở quán kho rỗng, Shop + nâng cấp hiệu lực từ Ngày kế, M2 ở 
+Ngày 3. ... ok
+test_ac_p2_11_day_scenario_contradictions_exit_2 
+(test_phase2_rules.Phase2CoreRules.test_ac_p2_11_day_scenario_contradictions_exit_2)
+AC-P2-11: các mâu thuẫn scenario của day/monsters/v1.1 trả mã 2. ... ok
+test_ac_p2_12_full_day_performance_and_determinism 
+(test_phase2_rules.Phase2CoreRules.test_ac_p2_12_full_day_performance_and_determinism)
+AC-P2-12: chạy headless 1 Ngày trọn vẹn (<= 22200 tick) dưới 20s và giống nhau từng byte. ... ok
+test_ac_p2_13_two_process_handoff_v11_ingredients 
+(test_phase2_rules.Phase2CoreRules.test_ac_p2_13_two_process_handoff_v11_ingredients)
+AC-P2-13: bàn giao 2 tiến trình với nguyên liệu mới (ca_keo, keo_neo) nấu Lẩu mắm. ... ok
+test_ac_p2_14_live_server_day_mode (test_phase2_rules.Phase2CoreRules.test_ac_p2_14_live_server_day_mode)
+AC-P2-14: chonoi.live hỗ trợ chế độ day, pause, buy, shop_done qua HTTP API. ... ok
+test_bad_frames_raise (test_python_starter_units.Units.test_bad_frames_raise) ... ok
+test_catch_is_a_v10_button_and_attack_is_not 
+(test_python_starter_units.Units.test_catch_is_a_v10_button_and_attack_is_not) ... ok
+test_id_allocator_continues_after_max (test_python_starter_units.Units.test_id_allocator_continues_after_max) ... ok
+test_id_sorting (test_python_starter_units.Units.test_id_sorting) ... ok
+test_input_edges_and_inherit (test_python_starter_units.Units.test_input_edges_and_inherit) ... ok
+test_live_inputs_keep_fast_tap_edge (test_python_starter_units.Units.test_live_inputs_keep_fast_tap_edge) ... ok
+test_session_steps_gather_and_dock (test_python_starter_units.Units.test_session_steps_gather_and_dock) ... ok
+test_con_01_ticks_zero_and_end_line (test_smoke_p1.Contract.test_con_01_ticks_zero_and_end_line) ... ok
+test_con_02_deterministic_bytes (test_smoke_p1.Contract.test_con_02_deterministic_bytes) ... ok
+test_con_03_bad_input_exit_2 (test_smoke_p1.Contract.test_con_03_bad_input_exit_2) ... ok
+test_con_03_old_and_future_modes_rejected (test_smoke_p1.Contract.test_con_03_old_and_future_modes_rejected) ... ok
+test_gather_snapshot_has_gather_fields (test_smoke_p1.Contract.test_gather_snapshot_has_gather_fields) ... ok
+test_scenario_out_of_domain_exit_2 (test_smoke_p1.Contract.test_scenario_out_of_domain_exit_2) ... ok
+test_inv_01_gather_writes_inventory_quan_reads_it 
+(test_smoke_p1.Integration.test_inv_01_gather_writes_inventory_quan_reads_it)
+Ví dụ smoke test trong PRD-0 mục G: cập bến ở tick 0, quán đọc kho đúng nội dung. ... ok
+test_inv_01_not_written_when_tick_limit_first 
+(test_smoke_p1.Integration.test_inv_01_not_written_when_tick_limit_first) ... ok
+test_inv_bad_schema_exit_2 (test_smoke_p1.Integration.test_inv_bad_schema_exit_2) ... ok
+test_inventory_and_scenario_stock_conflict (test_smoke_p1.Integration.test_inventory_and_scenario_stock_conflict) ... 
+ok
+test_inventory_flags_mode_mismatch_exit_2 (test_smoke_p1.Integration.test_inventory_flags_mode_mismatch_exit_2) ... ok
+test_move_01_swim_speed_after_ramp (test_smoke_p1.Movement.test_move_01_swim_speed_after_ramp)
+Bỏ 6 tick tăng tốc rồi đo 60 tick: quãng ≈ swim_speed × 1 s (±0.1). Ngang, xuống, chéo (không nhanh hơn). ... ok
+test_move_02_heading_positive_is_down (test_smoke_p1.Movement.test_move_02_heading_positive_is_down) ... ok
+test_move_03_edge_clamp (test_smoke_p1.Movement.test_move_03_edge_clamp)
+Chặn từng mép của vùng nước, kể cả d không âm (không bay lên khỏi mặt nước) và đáy d = 30. ... ok
+test_move_mep_vel_ve_0 (test_smoke_p1.Movement.test_move_mep_vel_ve_0) ... ok
+test_move_ramp_doi_huong_trong_tran (test_smoke_p1.Movement.test_move_ramp_doi_huong_trong_tran)
+Đảo từ +speed sang -speed: vận tốc chạm mục tiêu sau tối đa ramp_max_ticks tick kể từ lúc đổi input. ... ok
+test_time_ends_gather_and_keeps_hold (test_smoke_p1.Movement.test_time_ends_gather_and_keeps_hold) ... ok
+test_khoi_sai_mode_exit_2 (test_smoke_p1.ScenarioModes.test_khoi_sai_mode_exit_2) ... ok
+test_quan_fixture_khong_hop_le_exit_2 (test_smoke_p1.ScenarioModes.test_quan_fixture_khong_hop_le_exit_2) ... ok
+test_quan_player_vel_hop_le (test_smoke_p1.ScenarioModes.test_quan_player_vel_hop_le) ... ok
+test_good (test_team_check.TeamCheck.test_good) ... ok
+test_template_is_rejected (test_team_check.TeamCheck.test_template_is_rejected) ... ok
+test_too_few_members (test_team_check.TeamCheck.test_too_few_members) ... ok
+test_wrong_size_duplicate_and_outsider (test_team_check.TeamCheck.test_wrong_size_duplicate_and_outsider) ... ok
+
+----------------------------------------------------------------------
+Ran 53 tests in 22.031s
+
+OK

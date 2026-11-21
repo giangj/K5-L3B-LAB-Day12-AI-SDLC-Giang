@@ -124,6 +124,13 @@ class DaySim:
         cur_day = self.day
         raw_events = self.active.step(inp)
         tagged = [(nm, dt, cur_phase, cur_day) for nm, dt in raw_events]
+        if cur_phase == "quan":
+            self.money = self.active.money
+            self.earned = self.active.earned
+            self.reputation = self.active.reputation
+        elif cur_phase == "shop":
+            self.money = self.active.money
+            self.upgrades = dict(self.active.upgrades)
 
         if self.active.done:
             if cur_phase == "gather":

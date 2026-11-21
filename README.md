@@ -8,7 +8,7 @@
 ```bash
 git clone https://github.com/giangj/K5-L3B-LAB-Day12-AI-SDLC-Giang.git && cd K5-L3B-LAB-Day12-AI-SDLC-Giang
 PYTHONPATH=tests:. python3 -m unittest discover -s tests -v
-python3 -m chonoi.live --mode gather
+python3 -m chonoi.live --mode day
 ```
 
 > **Lưu ý Windows:** Đảm bảo `python3` trên `PATH` trỏ tới Python 3.11+ (tránh alias Microsoft Store trả lỗi `9009`), sau đó chạy tương tự với `$env:PYTHONPATH = "tests;."`.
@@ -18,10 +18,12 @@ python3 -m chonoi.live --mode gather
 - **Bơi / Di chuyển:** `W A S D` hoặc các phím mũi tên
 - **Tương tác (`interact`):** `E` — Cập bến (`gather`) / Hái rau trên mặt nước (`gather`) / Nấu, nhấc món, phục vụ bàn (`quan`)
 - **Bắt cá (`catch`):** `Space` — Bắt đàn cá khi đang lặn dưới nước (`gather`)
-- **Chơi lại:** `R`
+- **Tạm dừng (`pause`):** `Esc` hoặc `P` — Đóng băng mô phỏng trong cả buổi sáng, quán và tiệm
+- **Chơi lại / Chọn chế độ:** `R` hoặc nút chuyển chế độ ngay trên trình duyệt (`day` / `gather` / `quan`)
 
-Chơi nối 2 buổi trực tiếp trên trình duyệt:
+Chơi nối 2 buổi trực tiếp hoặc trọn vòng nhiều Ngày trên trình duyệt:
 ```bash
+python3 -m chonoi.live --mode day --days 5
 python3 -m chonoi.live --mode gather --inventory-out catch.json
 python3 -m chonoi.live --mode quan --inventory catch.json
 ```
@@ -32,7 +34,11 @@ python3 -m chonoi.live --mode quan --inventory catch.json
   ```bash
   PYTHONPATH=tests:. python3 -m unittest discover -s tests -v
   ```
-- **Chạy mô phỏng headless Phase 1 (Contract v1.0):**
+- **Chạy mô phỏng headless vòng Ngày (Contract v1.1):**
+  ```bash
+  python3 -m chonoi.headless --mode day --days 1 --seed 1 --ticks 22200 --out day.jsonl
+  ```
+- **Chạy mô phỏng headless từng buổi (2 tiến trình bàn giao kho):**
   ```bash
   python3 -m chonoi.headless --mode gather --seed 1 --ticks 10800 --inventory-out catch.json --out gather.jsonl
   python3 -m chonoi.headless --mode quan --seed 1 --inventory catch.json --ticks 10800 --out quan.jsonl
@@ -47,5 +53,5 @@ python3 -m chonoi.live --mode quan --inventory catch.json
 
 - Thành viên & thỏa thuận nhóm: [`TEAM.md`](TEAM.md) (`team_size: 1`)
 - Hướng dẫn agent & AI skills: [`AGENTS.md`](AGENTS.md), [`.agents/skills/`](.agents/skills/)
-- Kế hoạch, ma trận truy vết & bằng chứng Phase 1: [`docs/plan/phase-1.md`](docs/plan/phase-1.md), [`docs/verification/phase-1.md`](docs/verification/phase-1.md), [`docs/proof/phase-1/`](docs/proof/phase-1/)
-- Làm rõ yêu cầu, standup & nhật ký AI: [`docs/clarify.md`](docs/clarify.md), [`docs/standup.md`](docs/standup.md), [`docs/ai-usage-log.md`](docs/ai-usage-log.md), [`CHANGELOG.md`](CHANGELOG.md)
+- Kế hoạch, ma trận truy vết & bằng chứng: Phase 1 ([`plan`](docs/plan/phase-1.md), [`verification`](docs/verification/phase-1.md), [`proof`](docs/proof/phase-1/)), Phase 2 ([`plan`](docs/plan/phase-2.md), [`verification`](docs/verification/phase-2.md), [`proof`](docs/proof/phase-2/))
+- Làm rõ yêu cầu, standup, retro & nhật ký AI: [`docs/clarify.md`](docs/clarify.md), [`docs/standup.md`](docs/standup.md), [`docs/retro.md`](docs/retro.md), [`docs/ai-usage-log.md`](docs/ai-usage-log.md), [`CHANGELOG.md`](CHANGELOG.md)
