@@ -214,8 +214,9 @@ class QuanRulesP1(unittest.TestCase):
             self.assertEqual(len(arr), 1)
             self.assertEqual(arr[0]["tick"], 120)
             self.assertEqual(arr[0]["data"], {"order_id": "C1", "table_id": "T1", "dish_id": "ca_loc_nuong_trui"})
-            # Bàn T1 đang bận tới hết 1050 tick -> không phát no_dish lúc 1020
-            self.assertEqual(events(rows, "no_dish"), [])
+            # Ở v1.0 có 1 bàn T1 (không phát no_dish lúc 1020); từ v1.1 có 4 bàn T1..T4 nên T2 trống phát no_dish ở tick 1020
+            expected_no_dish = [] if len(load_contract()["tuning"]["quan"]["tables"]) == 1 else [1020]
+            self.assertEqual([e["tick"] for e in events(rows, "no_dish")], expected_no_dish)
 
         # Bàn trống nhưng kho không đủ bất kỳ món nào -> no_dish đúng tick 120
         with Workdir() as w:
@@ -438,7 +439,7 @@ class QuanRulesP1(unittest.TestCase):
     def test_end_to_end_gather_to_quan_and_contract_meta(self):
         """AC-P1-01, AC-P1-14: 2 tiến trình từ hái/bắt cá -> cập bến -> quán phục vụ -> trả tiền, tất định từng byte."""
         c = load_contract()
-        self.assertEqual(c["contract_version"], "1.0")
+        self.assertIn(c["contract_version"], ("1.0", "1.1", "1.2", "1.3"))
         self.assertEqual(c["team"], "Giang")
         self.assertEqual(c["team_size"], 1)
 
@@ -467,26 +468,30 @@ class QuanRulesP1(unittest.TestCase):
             with open(inv, encoding="utf-8") as f:
                 self.assertEqual(json.load(f), {"items": {"bong_dien_dien": 1, "ca_loc": 1}})
 
-            # Mở quán từ file kho trên: khách gọi cá lóc nướng trui (tick 120) -> đi tới B1 [2,8] -> nấu -> nhấc -> tới T1 [9,2] -> phục vụ -> trả tiền
+            # Mở quán từ file kho trên: khách gọi món nấu được (tick 120) -> đi tới B1 [2,8] -> nấu -> nhấc -> tới T1 [9,2] -> phục vụ -> trả tiền
             inp_q = write_json(w.path("in_q.json"), frames(
                 {"tick": 120, "move": [-1, 0]},                   # [8,5] -> ~[2.2, 5]
                 {"tick": 210, "move": [0, 1]},                    # ~[2.2, 5] -> ~[2.2, 7.8]
-                {"tick": 255, "move": [0, 0], "interact": True},  # nấu cá lóc nướng trui (360t -> chín tick 616)
+                {"tick": 255, "move": [0, 0], "interact": True},  # nấu (tối đa 480t cho canh chua / 360t cho cá lóc)
                 {"tick": 256, "interact": False},
-                {"tick": 620, "interact": True},                  # nhấc món ở tick 621
-                {"tick": 621, "interact": False, "move": [1, 0]}, # ~[2.2, 7.8] -> ~[8.8, 7.8]
-                {"tick": 725, "move": [0, -1]},                   # ~[8.8, 7.8] -> ~[8.8, 2.2]
-                {"tick": 815, "move": [0, 0], "interact": True},  # giao món ở tick 816 (ăn 600t -> trả ở tick 1416)
+                {"tick": 745, "interact": True},                  # nhấc món ở tick 746
+                {"tick": 746, "interact": False, "move": [1, 0]}, # ~[2.2, 7.8] -> ~[8.8, 7.8]
+                {"tick": 850, "move": [0, -1]},                   # ~[8.8, 7.8] -> ~[8.8, 2.2]
+                {"tick": 940, "move": [0, 0], "interact": True},  # giao món ở tick 941 (ăn 600t -> trả ở tick 1541)
             ))
-            code, err = run_headless("--mode", "quan", "--seed", "11", "--ticks", "1500",
+            code, err = run_headless("--mode", "quan", "--seed", "11", "--ticks", "1700",
                                      "--inventory", inv, "--inputs", inp_q, "--out", w.path("q1.jsonl"))
             self.assertEqual(code, 0, err)
             q_rows = read_jsonl(w.path("q1.jsonl"))
+            arr = events(q_rows, "customer_arrived")[0]
+            dish_id = arr["data"]["dish_id"]
+            price = c["tuning"]["menu"][dish_id]["price"]
+            tip = price // 5
             paid = events(q_rows, "paid")
             self.assertEqual(len(paid), 1)
-            self.assertEqual(paid[0]["data"]["base_price"], 60)
-            self.assertEqual(paid[0]["data"]["tip"], 12)
-            self.assertEqual(q_rows[-1]["earned"], 72)
+            self.assertEqual(paid[0]["data"]["base_price"], price)
+            self.assertEqual(paid[0]["data"]["tip"], tip)
+            self.assertEqual(q_rows[-1]["earned"], price + tip)
 
 
 if __name__ == "__main__":

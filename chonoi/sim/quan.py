@@ -23,10 +23,12 @@ class QuanSim:
     mode = "quan"
     phase = "quan"
 
-    def __init__(self, tuning, scenario, streams, ids, inventory=None):
+    def __init__(self, tuning, scenario, streams, ids, inventory=None,
+                 allowed_dishes=None, money=0, earned=0, reputation=None):
         t = tuning["quan"]
         self.t = t
         self.menu = tuning["menu"]
+        self.allowed_dishes = set(allowed_dishes) if allowed_dishes is not None else set(self.menu.keys())
         self.rng = streams
         self.ids = ids
         p = scenario.get("player", {})
@@ -41,7 +43,8 @@ class QuanSim:
         self.time_left_ticks = scenario.get("time_left_ticks", int(round(t["duration_s"] * TICK)))
         self.phase_tick = 0
         self.random_customers = bool(scenario.get("random_customers", True))
-        self._rep_dec = Decimal(str(scenario.get("reputation", t["reputation_initial"])))
+        rep_init = t["reputation_initial"] if reputation is None else reputation
+        self._rep_dec = Decimal(str(scenario.get("reputation", rep_init)))
         self.reputation = float(self._rep_dec)
         self.stoves = [
             {
@@ -58,11 +61,20 @@ class QuanSim:
             {"id": tb["id"], "pos": [float(c) for c in tb["pos"]]}
             for tb in self._merge(t["tables"], scenario.get("tables", []))
         ]
+        if allowed_dishes is not None:
+            if self.hand is not None and self.hand["dish_id"] not in self.allowed_dishes:
+                raise BadInput(f"hand.dish_id {self.hand['dish_id']} không nằm trong kế hoạch ngày")
+            for s in self.stoves:
+                if s["dish"] is not None and s["dish"]["dish_id"] not in self.allowed_dishes:
+                    raise BadInput(f"stoves.{s['id']}.dish không nằm trong kế hoạch ngày")
+            for c in scenario.get("customers", []):
+                if c.get("dish_id") not in self.allowed_dishes:
+                    raise BadInput(f"customers.{c['id']}.dish_id không nằm trong kế hoạch ngày")
         self.customers = self._init_customers(scenario.get("customers", []))
         for e in self.customers:
             ids.reserve(e["id"])
-        self.money = 0
-        self.earned = 0
+        self.money = int(money)
+        self.earned = int(earned)
         self.shift_earned = 0
         self.done = False
         self.reason = None
@@ -380,7 +392,7 @@ class QuanSim:
             for ing, qty in c["reserved"].items():
                 avail[ing] = avail.get(ing, 0) - qty
         cookable = [
-            d for d in sorted(self.menu.keys())
+            d for d in sorted(self.allowed_dishes)
             if all(avail.get(ing, 0) >= qty for ing, qty in self.menu[d]["recipe"].items())
         ]
         if not cookable:
