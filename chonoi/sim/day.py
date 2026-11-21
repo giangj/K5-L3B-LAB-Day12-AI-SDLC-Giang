@@ -1,5 +1,7 @@
-"""Chế độ Ngày (`day`): vòng lặp gather -> quan -> shop qua 1..5 Ngày (Test Contract v1.1)."""
+"""Chế độ Ngày (`day`): vòng lặp gather -> quan -> shop qua 1..5 Ngày (Test Contract v1.2)."""
 
+from ..ids import sort_by_id
+from ..inventory import serialize_item
 from .gather import GatherSim
 from .quan import QuanSim
 from .shop import ShopSim
@@ -142,7 +144,7 @@ class DaySim:
                 self.money = self.active.money
                 self.earned = self.active.earned
                 self.reputation = self.active.reputation
-                leftover = dict(self.active.stock)
+                leftover = [serialize_item(it) for it in sort_by_id(self.active.stock)]
                 self.phase = "shop"
                 self.active = self._make_shop(leftover)
                 tagged.append(("phase_start", {}, "shop", self.day))

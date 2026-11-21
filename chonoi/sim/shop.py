@@ -1,7 +1,11 @@
-"""Buổi Shop — nâng cấp giữa các Ngày (TICKET-02, Test Contract v1.1).
+"""Buổi Shop — nâng cấp giữa các Ngày (TICKET-02 & TICKET-03, Test Contract v1.2).
 
 Xử lý lệnh `buy` trước `shop_done`. Nâng cấp lưu vào `upgrades` ngay nhưng chỉ có hiệu lực từ Ngày kế.
+Kho thô dư trong Shop giữ theo schema cá thể v1.2 và không hao độ tươi.
 """
+
+from ..ids import sort_by_id
+from ..inventory import serialize_item
 
 
 class ShopSim:
@@ -10,7 +14,7 @@ class ShopSim:
 
     def __init__(self, tuning, stock, money, earned, reputation, upgrades, active_upgrades):
         self.t = tuning["shop"]
-        self.stock = {k: int(v) for k, v in stock.items() if v > 0}
+        self.stock = [serialize_item(it) for it in sort_by_id(stock)]
         self.money = int(money)
         self.earned = int(earned)
         self.reputation = reputation
@@ -23,7 +27,7 @@ class ShopSim:
 
     def snapshot(self) -> dict:
         return {
-            "stock": {k: self.stock[k] for k in sorted(self.stock) if self.stock[k] > 0},
+            "stock": [serialize_item(it) for it in sort_by_id(self.stock)],
         }
 
     def step(self, inp):

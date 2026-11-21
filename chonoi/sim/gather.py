@@ -8,10 +8,11 @@ Luật Phase 1 & Phase 2 (Test Contract v1.1):
   - Interact (bến trước, hái nút mặt nước + mọc lại), Catch (dùng vị trí cá trước khi bơi), hết giờ, xuất kho.
 """
 
+from fractions import Fraction
 import math
 
 from ..ids import id_key, sort_by_id
-from ..inventory import hold_to_items
+from ..inventory import hold_to_items, serialize_item, snap_fresh
 from .ramp import ramp_velocity
 
 TICK = 60.0
@@ -45,7 +46,24 @@ class GatherSim:
         self.zero_oxy_ticks = p.get("zero_oxy_ticks", 0)
         self.invuln_ticks = p.get("invuln_ticks", 0)
         self.catch_cd_ticks = p.get("catch_cd_ticks", 0)
-        self.hold = list(scenario.get("hold", []))  # thứ tự nhặt, cuối mảng là mới nhất
+
+        fr = tuning["freshness"]
+        self._fresh_init = snap_fresh(fr["initial"])
+        self._decay_step = Fraction(str(fr["gather_decay_per_s"])) / int(tuning["tick_hz"])
+        self._spoiled_below = snap_fresh(fr["spoiled_below"])
+        self.hold = []  # thứ tự vào giỏ, cuối mảng là mới nhất
+        for raw_it in scenario.get("hold", []):
+            if day == 1:
+                iid = raw_it["id"]
+                ids.reserve(iid)
+            else:
+                iid = ids.new("I")
+            self.hold.append({
+                "id": iid,
+                "kind": raw_it["kind"],
+                "fresh": snap_fresh(raw_it["fresh"]),
+            })
+
         self.time_left_ticks = scenario.get("time_left_ticks", int(round(t["duration_s"] * TICK)))
         self.phase_tick = 0
         self.random_fish = bool(scenario.get("random_fish", True))
@@ -193,7 +211,7 @@ class GatherSim:
                 "catch_cd_ticks": self.catch_cd_ticks,
                 "at_surface": self._at_surface(),
             },
-            "hold": list(self.hold),
+            "hold": [serialize_item(it) for it in self.hold],
             "hold_count": len(self.hold),
             "hold_capacity": self.t["hold_capacity"],
             "nodes": [
@@ -234,7 +252,7 @@ class GatherSim:
     # --- một bước ---------------------------------------------------------------
     def step(self, inp):
         events = []
-        # 1. đồng hồ, cooldown, bất tử và hồi nút
+        # 1. đồng hồ, cooldown, bất tử, hồi nút và hao tươi hàng sẵn có trong giỏ
         self.phase_tick += 1
         self.time_left_ticks = max(0, self.time_left_ticks - 1)
         self.invuln_ticks = max(0, self.invuln_ticks - 1)
@@ -244,6 +262,15 @@ class GatherSim:
                 n["regrow_ticks"] -= 1
                 if n["regrow_ticks"] == 0:
                     events.append(("node_regrown", {"node_id": n["id"]}))
+        spoiled_now = []
+        for it in self.hold:
+            prev_f = it["fresh"]
+            new_f = max(Fraction(0), prev_f - self._decay_step)
+            it["fresh"] = new_f
+            if prev_f >= self._spoiled_below and new_f < self._spoiled_below:
+                spoiled_now.append(it)
+        for it in sort_by_id(spoiled_now):
+            events.append(("spoiled", {"item_id": it["id"], "kind": it["kind"], "location": "hold"}))
 
         # 2. bơi + chặn mép + dive/surface + oxy + ngạt (ngạt xuyên bất tử)
         was_surface = self._at_surface()
@@ -269,7 +296,7 @@ class GatherSim:
                     self.hp = max(0, self.hp - 1)
                     events.append(("choke", {"hp": self.hp}))
                     if self.hp <= 0:
-                        lost = list(reversed(self.hold))
+                        lost = [serialize_item(it) for it in reversed(self.hold)]
                         self.hold = []
                         events.append(("faint", {"cause": "choke", "lost": lost, "hp": 0}))
                         self._finish("fainted", events)
@@ -292,7 +319,12 @@ class GatherSim:
                     amount = int(self.t["node_yield"])
                     free = int(self.t["hold_capacity"]) - len(self.hold)
                     if free >= amount:
-                        self.hold.extend([node["kind"]] * amount)
+                        for _ in range(amount):
+                            self.hold.append({
+                                "id": self.ids.new("I"),
+                                "kind": node["kind"],
+                                "fresh": self._fresh_init,
+                            })
                         node["regrow_ticks"] = int(round(self.t["regrow_s"] * TICK))
                         events.append(("gather", {"node_id": node["id"], "kind": node["kind"], "amount": amount}))
                     else:
@@ -307,7 +339,12 @@ class GatherSim:
                 yld = int(self.t["fish_yield"][fish["kind"]])
                 free = int(self.t["hold_capacity"]) - len(self.hold)
                 if free >= yld:
-                    self.hold.extend([fish["kind"]] * yld)
+                    for _ in range(yld):
+                        self.hold.append({
+                            "id": self.ids.new("I"),
+                            "kind": fish["kind"],
+                            "fresh": self._fresh_init,
+                        })
                     self.fish.remove(fish)
                     self.catch_cd_ticks = int(round(self.t["catch_cooldown_s"] * TICK))
                     events.append(("fish_caught", {"fish_id": fish["id"], "kind": fish["kind"], "yield": yld}))
@@ -386,7 +423,7 @@ class GatherSim:
             drop_n = int(math.floor(len(self.hold) * m_cfg["loss_ratio"]))
             lost = []
             for _ in range(drop_n):
-                lost.append(self.hold.pop())
+                lost.append(serialize_item(self.hold.pop()))
             self.invuln_ticks = int(m_cfg["invuln_ticks"])
             dx = m["pos"][0] - self.pos[0]
             dd = m["pos"][1] - self.pos[1]
@@ -402,7 +439,7 @@ class GatherSim:
                 "pos": list(self.pos),
             }))
             if self.hp <= 0:
-                rem_lost = list(reversed(self.hold))
+                rem_lost = [serialize_item(it) for it in reversed(self.hold)]
                 self.hold = []
                 events.append(("faint", {"cause": "monster", "lost": rem_lost, "hp": 0}))
                 self._finish("fainted", events)
